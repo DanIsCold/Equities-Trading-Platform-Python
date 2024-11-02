@@ -26,6 +26,7 @@ class marketDataHandler:
             'function': 'TIME_SERIES_INTRADAY',
             'symbol': symbol,
             'interval' : interval,
+            'outputsize' : 'full',
             'apikey': self.api_key
         }
         response = requests.get(self.base_url, params=params)
@@ -63,7 +64,6 @@ class marketDataHandler:
 p1 = marketDataHandler()
 loaded_data = p1.load_data_from_file()
 time_series_key = "Time Series (1min)"
-setup = dict(type='ohlc',volume=True, mav=(7,15,22))
 if time_series_key in loaded_data:
     time_series_data = loaded_data[time_series_key]
     df = pd.DataFrame.from_dict(time_series_data, orient='index')
@@ -74,26 +74,30 @@ if time_series_key in loaded_data:
     df = df.sort_index()
     df = df.astype(float)
 
-    # Adjust time zone to US/Eastern
-    df.index = df.index.tz_localize('UTC').tz_convert('US/Eastern')
-
     # Filter data to include only regular market hours (9:30 am to 4:00 pm)
     market_open = pd.Timestamp('09:30', tz='US/Eastern').time()
     market_close = pd.Timestamp('16:00', tz='US/Eastern').time()
     df = df.between_time(market_open, market_close)
 
+    # Get the last trading day
+    last_trading_day = df.index[-1].date()  # Get the last date in the index
+    df_last_day = df[df.index.date == last_trading_day]  # Filter for the last trading day
+
+    print("Filtered DataFrame for the last trading day:")
+    print(df_last_day)
+
     # Plot the closing prices
     plt.figure(figsize=(14, 7))
-    plt.plot(df.index, df['Close'], label='Close Price', color='blue')
-    plt.title('Intraday Closing Prices')
+    plt.plot(df_last_day.index, df_last_day['Close'], label='Close Price', color='blue')
+    plt.title('Intraday Closing Prices for Last Trading Day')
     plt.xlabel('Time')
     plt.ylabel('Price (USD)')
+    plt.ylim(206, 210)
     plt.legend()
     plt.grid(True)
     plt.show()
 
-    # Plot candlestick chart with volume
-    #mpf.plot(df, type='candle', volume=True, title='Intraday Price Movements', style='charles')
-    mpf.plot(df,**setup)
+    # Plot candlestick chart with volume for the last trading day
+    mpf.plot(df_last_day, type='candle', volume=True, title='Intraday Price Movements for Last Trading Day', style='charles')
 else:
     print("Time series data not found in the file.")
