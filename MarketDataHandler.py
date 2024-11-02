@@ -3,6 +3,7 @@ import asyncio
 import matplotlib
 import io
 import json
+import pandas as pd
 
 class marketDataHandler:
     def __init__(self):
@@ -59,8 +60,8 @@ class marketDataHandler:
     
 p1 = marketDataHandler()
 loaded_data = p1.load_data_from_file()
-if 'error' not in loaded_data:
-    for timestamp, values in list(loaded_data.items())[:2]:
-        print(f"{timestamp}: {values}")
+if isinstance(loaded_data, dict):
+    df = pd.DataFrame.from_dict(loaded_data, orient='index')
+    print(df)
 else:
-    print("ITS ALL FUCKED")
+    print("Error: Failed to load data.")
