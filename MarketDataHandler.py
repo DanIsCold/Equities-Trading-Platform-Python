@@ -4,6 +4,8 @@ import matplotlib
 import io
 import json
 import pandas as pd
+import matplotlib.pyplot as plt
+import mplfinance as mpf
 
 class marketDataHandler:
     def __init__(self):
@@ -60,8 +62,38 @@ class marketDataHandler:
     
 p1 = marketDataHandler()
 loaded_data = p1.load_data_from_file()
-if isinstance(loaded_data, dict):
-    df = pd.DataFrame.from_dict(loaded_data, orient='index')
-    print(df)
+time_series_key = "Time Series (1min)"
+setup = dict(type='ohlc',volume=True, mav=(7,15,22))
+if time_series_key in loaded_data:
+    time_series_data = loaded_data[time_series_key]
+    df = pd.DataFrame.from_dict(time_series_data, orient='index')
+    df.columns = ['Open', 'High', 'Low', 'Close', 'Volume']
+    df.index = pd.to_datetime(df.index)
+
+    # Sort and convert columns
+    df = df.sort_index()
+    df = df.astype(float)
+
+    # Adjust time zone to US/Eastern
+    df.index = df.index.tz_localize('UTC').tz_convert('US/Eastern')
+
+    # Filter data to include only regular market hours (9:30 am to 4:00 pm)
+    market_open = pd.Timestamp('09:30', tz='US/Eastern').time()
+    market_close = pd.Timestamp('16:00', tz='US/Eastern').time()
+    df = df.between_time(market_open, market_close)
+
+    # Plot the closing prices
+    plt.figure(figsize=(14, 7))
+    plt.plot(df.index, df['Close'], label='Close Price', color='blue')
+    plt.title('Intraday Closing Prices')
+    plt.xlabel('Time')
+    plt.ylabel('Price (USD)')
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+
+    # Plot candlestick chart with volume
+    #mpf.plot(df, type='candle', volume=True, title='Intraday Price Movements', style='charles')
+    mpf.plot(df,**setup)
 else:
-    print("Error: Failed to load data.")
+    print("Time series data not found in the file.")
