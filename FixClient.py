@@ -20,6 +20,7 @@ class FixClient(fix.Application):
             self.settingsDic[sessionID.toString()] = self.session_settings.get(sessionID) 
         return 
 
+
     def onLogon(self, sessionID): 
         self.sessionID = sessionID 
         return 
@@ -27,6 +28,7 @@ class FixClient(fix.Application):
     def onLogout(self, sessionID): 
         return 
 
+    
     def toAdmin(self, message, sessionID): 
         msg_type = message.getHeader().getField(fix.MsgType().getField()) 
         if msg_type == fix.MsgType_Logon: 
