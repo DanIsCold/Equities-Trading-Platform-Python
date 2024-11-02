@@ -5,7 +5,7 @@ import io
 import json
 
 class marketDataHandler:
-    def __init__(self, api_url):
+    def __init__(self):
         self.api_key = 'ZQMZITPSHXTQJZ50'
         self.base_url = 'https://www.alphavantage.co/query'
         self.file_name = 'intraday_data.txt'
@@ -32,8 +32,8 @@ class marketDataHandler:
 
             time_series_key = f"Time Series ({interval})"
             if time_series_key in self.data:
-                with open(self.file_name, ' w') as file:
-                    file.write(self.data)
+                with io.open(self.file_name, 'w', encoding='utf-8') as file:
+                    file.write(json.dumps(self.data))
                 return self.data[time_series_key]
             else:
                 return {"error": "No relevant data available"}
@@ -58,4 +58,9 @@ class marketDataHandler:
         return
     
 p1 = marketDataHandler()
-p1.fetch_intraday_data('IBM','15min')
+loaded_data = p1.load_data_from_file()
+if 'error' not in loaded_data:
+    for timestamp, values in list(loaded_data.items())[:2]:
+        print(f"{timestamp}: {values}")
+else:
+    print("ITS ALL FUCKED")
