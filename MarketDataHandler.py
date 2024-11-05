@@ -65,16 +65,10 @@ class marketDataHandler:
             return {"error": "File not found. Has it been fetched first?"}
         except json.JSONDecodeError:
             return {"error": "Error decoding file"}
-
-    def check_market_open_eu(self):
-        #checks if markets in UK are open - opening hrs 0800 - 1630
-        current_time = datetime.now().time()
-        open_time = time(8,0)
-        close_time = time(16,30)
-        return open_time <= current_time <= close_time
-
-    def check_market_open_us(self):
+         
+    def check_market_open(self):
         #checks if markets in US are open - opening hrs 0930 - 1630
+        #Honestly dont know if this even works...
         open_time = time(9,30)
         close_time = time(16,30)
 
@@ -101,7 +95,7 @@ class marketDataHandler:
             df.index = df.index.tz_convert('America/New_York')
 
             # Plot candlestick chart
-            mpf.plot(df, type='candle', style='charles', title='AAPL Candlestick Chart (ET)', volume=True)
+            mpf.plot(df, type='candle', style='charles', title=f'{symbol} Candlestick Chart (ET)', volume=True)
         else:
             print(loaded_data["error"])
         return
@@ -109,5 +103,7 @@ class marketDataHandler:
 # Example Usage
 test1 = marketDataHandler()
 test1.plot_candle("AAPL","1Min")
+
+
 #Honestly idk why this line exists but my brain is retarded rn so im leaving it here for reference
 #bars_data = .fetch_market_data("AAPL", "1Min", "2024-11-01T13:30:00Z", "2024-11-01T20:00:00Z", 5000, 'iex', 'USD')
