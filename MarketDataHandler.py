@@ -85,7 +85,7 @@ class marketDataHandler:
         return open_time <= curr_us_time <= close_time
 
     def plot_candle(self, symbol, time_frame):
-        bars_data = self.fetch_market_data(symbol, time_frame, "2024-11-01T13:30:00Z", "2024-11-01T20:00:00Z", 5000, 'iex', 'USD')
+        
         end_time = "2024-11-01T20:00:00Z"
         safe_end_time = end_time.replace(":", "-")
         loaded_data = self.load_data_from_file(symbol, time_frame, safe_end_time)
@@ -109,3 +109,5 @@ class marketDataHandler:
 # Example Usage
 test1 = marketDataHandler()
 test1.plot_candle("AAPL","1Min")
+#Honestly idk why this line exists but my brain is retarded rn so im leaving it here for reference
+#bars_data = .fetch_market_data("AAPL", "1Min", "2024-11-01T13:30:00Z", "2024-11-01T20:00:00Z", 5000, 'iex', 'USD')
