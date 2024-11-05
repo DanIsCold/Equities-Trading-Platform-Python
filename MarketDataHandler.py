@@ -5,15 +5,15 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
 import mplfinance as mpf
-from datetime import datetime
+from datetime import datetime, time
+import pytz
 
 class marketDataHandler:
     def __init__(self):
         self.data = None
 
-
     def fetch_market_data(self, symbol, time_frame, start_time, end_time, limit, feed, currency):
-
+        #check if market open, if open run this, if not pull data from db
         url = "https://data.alpaca.markets/v2/stocks/bars"
 
         params = {
@@ -66,31 +66,46 @@ class marketDataHandler:
         except json.JSONDecodeError:
             return {"error": "Error decoding file"}
 
-    def process_data(self):
-        return
+    def check_market_open_eu(self):
+        #checks if markets in UK are open - opening hrs 0800 - 1630
+        current_time = datetime.now().time()
+        open_time = time(8,0)
+        close_time = time(16,30)
+        return open_time <= current_time <= close_time
 
-    def provide_data(self):
+    def check_market_open_us(self):
+        #checks if markets in US are open - opening hrs 0930 - 1630
+        open_time = time(9,30)
+        close_time = time(16,30)
+
+        curr_uk_time = datetime.now(pytz.UTC)
+        us_time = pytz.timezone("US/Eastern")
+        curr_us_time = curr_uk_time.astimezone(us_time).time()
+
+        return open_time <= curr_us_time <= close_time
+
+    def plot_candle(self, symbol, time_frame):
+        bars_data = self.fetch_market_data(symbol, time_frame, "2024-11-01T13:30:00Z", "2024-11-01T20:00:00Z", 5000, 'iex', 'USD')
+        end_time = "2024-11-01T20:00:00Z"
+        safe_end_time = end_time.replace(":", "-")
+        loaded_data = self.load_data_from_file(symbol, time_frame, safe_end_time)
+
+        if "error" not in loaded_data:
+            aapl_data = loaded_data['bars']['AAPL']
+
+            # Convert to DataFrame for mplfinance
+            df = pd.DataFrame(aapl_data)
+            df['t'] = pd.to_datetime(df['t'], utc=True)  # Convert 't' to datetime format
+            df.set_index('t', inplace=True)  # Set the datetime column as the index
+            df.rename(columns={'o': 'Open', 'h': 'High', 'l': 'Low', 'c': 'Close', 'v': 'Volume'}, inplace=True)
+            df.index = df.index.tz_convert('America/New_York')
+
+            # Plot candlestick chart
+            mpf.plot(df, type='candle', style='charles', title='AAPL Candlestick Chart (ET)', volume=True)
+        else:
+            print(loaded_data["error"])
         return
 
 # Example Usage
 test1 = marketDataHandler()
-bars_data = test1.fetch_market_data('AAPL', '1Min', "2024-11-01T13:30:00Z", "2024-11-01T20:00:00Z", 5000, 'iex', 'USD')
-end_time = "2024-11-01T20:00:00Z"
-safe_end_time = end_time.replace(":", "-")
-loaded_data = test1.load_data_from_file('AAPL', '1Min', safe_end_time)
-
-# Check if loaded_data contains error
-if "error" not in loaded_data:
-    aapl_data = loaded_data['bars']['AAPL']
-
-    # Convert to DataFrame for mplfinance
-    df = pd.DataFrame(aapl_data)
-    df['t'] = pd.to_datetime(df['t'], utc=True)  # Convert 't' to datetime format
-    df.set_index('t', inplace=True)  # Set the datetime column as the index
-    df.rename(columns={'o': 'Open', 'h': 'High', 'l': 'Low', 'c': 'Close', 'v': 'Volume'}, inplace=True)
-    df.index = df.index.tz_convert('America/New_York')
-
-    # Plot candlestick chart
-    mpf.plot(df, type='candle', style='charles', title='AAPL Candlestick Chart (ET)', volume=True)
-else:
-    print(loaded_data["error"])
+test1.plot_candle("AAPL","1Min")
