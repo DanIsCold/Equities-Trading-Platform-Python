@@ -103,7 +103,3 @@ class marketDataHandler:
 # Example Usage
 test1 = marketDataHandler()
 test1.plot_candle("AAPL","1Min")
-
-
-#Honestly idk why this line exists but my brain is retarded rn so im leaving it here for reference
-#bars_data = .fetch_market_data("AAPL", "1Min", "2024-11-01T13:30:00Z", "2024-11-01T20:00:00Z", 5000, 'iex', 'USD')
