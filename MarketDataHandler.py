@@ -56,6 +56,7 @@ class marketDataHandler:
             print(f"Error: Failed data fetch, code: {response.status_code}")
             return {"error": f"Failed data fetch, code: {response.status_code}"}
 
+
 #This function now will get called if market is closed. So instead of reading from a 
 #file it has to check the database for the info 
     def load_data_from_file(self, symbol, time_frame):
@@ -75,7 +76,6 @@ class marketDataHandler:
         #Honestly dont know if this even works...
         open_time = time(9,30)
         close_time = time(16,30)
-
         curr_uk_time = datetime.now(pytz.UTC)
         us_time = pytz.timezone("US/Eastern")
         curr_us_time = curr_uk_time.astimezone(us_time).time()

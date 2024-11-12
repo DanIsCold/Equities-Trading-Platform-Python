@@ -7,9 +7,11 @@ class godFunction():
     def __init__(self) -> None:
         pass
 
-    def db_insert_test(self, limit, feed, currency):
-        dbHandler = DatabaseHandler('AAPL', '1Min', '2024-01-11T14:30:00Z', '2024-01-11T21:00:00Z')
-        dbHandler.connect_and_insert(limit,feed,currency)
+    def db_dbhandler_test(self):
+        dbHandler = DatabaseHandler()
+        #dbHandler.connect_and_insert(limit,feed,currency)
+        dbHandler.build_hourly_data('AAPL')
+
 
 shum = godFunction()
-shum.db_insert_test(1000,'iex','USD')
+shum.db_dbhandler_test()

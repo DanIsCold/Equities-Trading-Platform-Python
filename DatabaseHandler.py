@@ -1,6 +1,6 @@
 import psycopg2
 from psycopg2.extras import execute_values
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta, timezone, date
 from MarketDataHandler import marketDataHandler
 
 
@@ -14,11 +14,8 @@ db_config = {
 
 
 class DatabaseHandler():
-    def __init__(self, symbol, timeframe, start_time, end_time):
-        self.symbol = symbol
-        self.timeframe = timeframe
-        self.start_time = start_time
-        self.end_time = end_time
+    def __init__(self):
+        pass
 
     
     def outside_hours(self, end_time_str: str):
@@ -36,14 +33,15 @@ class DatabaseHandler():
             return True
         return False
 
-    def connect_and_insert(self, limit, feed, currency):
-        if self.outside_hours(self.end_time):
+
+    def connect_and_insert(self, symbol, timeframe, start_time, end_time, limit, feed, currency):
+        if self.outside_hours(end_time):
             print('Outside market hours, no request created!')
             return  # Exit the function if outside hours
 
         # Continue with data fetching and inserting if within hours
-        market_data_handler = marketDataHandler(self.start_time, self.end_time, limit, feed, currency)
-        market_data = market_data_handler.fetch_market_data(self.symbol, self.timeframe)
+        market_data_handler = marketDataHandler(start_time, end_time, limit, feed, currency)
+        market_data = market_data_handler.fetch_market_data(symbol, timeframe)
 
         try:
             conn = psycopg2.connect(**db_config)
@@ -72,7 +70,7 @@ class DatabaseHandler():
             values = [
                 (
                     #f"{self.symbol}_{datetime.strptime(row['t'], '%Y-%m-%dT%H:%M:%SZ').strftime('%Y-%m-%dT%H:%M:%SZ')}",  # Create symbol_time
-                    self.symbol,
+                    symbol,
                     row['c'],
                     row['h'],
                     row['l'],
@@ -98,3 +96,67 @@ class DatabaseHandler():
                 cursor.close()
                 conn.close()
                 print("Database connection closed.")
+    
+
+    def date_seven_years_ago(self):
+        today = datetime.now()
+        # Subtract 7 years (365 * 7 days)
+        seven_years_ago = today - timedelta(days=365 * 7)
+        return seven_years_ago
+
+    '''
+    def build_hourly_data(self, symbol):
+        conn = psycopg2.connect(**db_config)
+        cursor = conn.cursor()
+        
+        # Get the most recent and oldest date existing in the database table
+        cursor.execute("SELECT MAX(time) FROM hourly_market_data WHERE symbol = %s", (symbol,))
+        latest_timestamp = cursor.fetchone()[0]
+        cursor.execute("SELECT MIN(time) FROM hourly_market_data WHERE symbol = %s", (symbol,))
+        oldest_timestamp = cursor.fetchone()[0]
+
+        if oldest_timestamp is None:
+            oldest_timestamp = self.date_seven_years_ago()
+
+        if latest_timestamp is None:
+            latest_timestamp = datetime.now()
+
+        while latest_timestamp > oldest_timestamp:
+            market_data_handler = marketDataHandler(latest_timestamp, oldest_timestamp, 10000, 'iex', 'USD')
+            market_data = market_data_handler.fetch_market_data(symbol, '1H')
+
+            if not market_data:
+                break
+
+            # Prepare data for insertion
+            values = [
+                (
+                    symbol,
+                    row['c'],
+                    row['h'],
+                    row['l'],
+                    row['n'],
+                    row['o'],
+                    row['t'],
+                    row['v'],
+                    row['vw']
+                ) for row in market_data
+            ]
+
+            # Insert data into the database, avoiding duplicates
+            insert_query = """
+            INSERT INTO hourly_market_data (
+                symbol, close_price, high_price, low_price, trade_count, open_price, time, volume, volume_weighted
+            ) VALUES %s
+            ON CONFLICT (symbol, time) DO NOTHING
+            """
+            execute_values(cursor, insert_query, values)
+            conn.commit()
+
+            # Update the latest_timestamp to the oldest timestamp in the fetched data
+            latest_timestamp = min(row['t'] for row in market_data)
+
+        cursor.close()
+        conn.close()
+        print("Database connection closed.")
+    '''
