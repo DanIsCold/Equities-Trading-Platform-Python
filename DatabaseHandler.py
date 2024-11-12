@@ -52,7 +52,7 @@ class DatabaseHandler():
 
             try:
                 # SQL command to delete all rows in the market_data table
-                cursor.execute("DELETE FROM market_data;")
+                cursor.execute("DELETE FROM minute_market_data;")
                 # Commit the transaction
                 conn.commit()
                 print("All rows in 'market_data' table deleted successfully.")
@@ -63,15 +63,15 @@ class DatabaseHandler():
 
             # Insert query using execute_values for efficient bulk insertion
             insert_query = """
-            INSERT INTO market_data (
-                symbol_time, symbol, close_price, high_price, low_price, trade_count, open_price, time, volume, volume_weighted
+            INSERT INTO minute_market_data (
+                symbol, close_price, high_price, low_price, trade_count, open_price, time, volume, volume_weighted
             ) VALUES %s
             """
 
             # Prepare data for insertion, including the new "symbol_time" column
             values = [
                 (
-                    f"{self.symbol}_{datetime.strptime(row['t'], '%Y-%m-%dT%H:%M:%SZ').strftime('%Y-%m-%dT%H:%M:%SZ')}",  # Create symbol_time
+                    #f"{self.symbol}_{datetime.strptime(row['t'], '%Y-%m-%dT%H:%M:%SZ').strftime('%Y-%m-%dT%H:%M:%SZ')}",  # Create symbol_time
                     self.symbol,
                     row['c'],
                     row['h'],
