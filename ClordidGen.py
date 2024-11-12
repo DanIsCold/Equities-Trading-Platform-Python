@@ -16,7 +16,6 @@ class clordidGenerator:
             order_id = 'DE' + ''.join(random.choices('0123456789', k=14))
             # Check if the ID is unique
             if order_id not in self.existing_ids:
-                # Add the new ID to the set and save it to the file
                 self.existing_ids.add(order_id)
                 self.save_to_file(order_id)
                 return order_id
@@ -34,15 +33,12 @@ class clordidGenerator:
                 return set()
 
     def save_to_file(self, order_id):
-        # Append the new order ID to the file with a comma separator
         with open(self.file_name, 'a') as file:
-            # Check if the file is empty before writing a comma
             if os.path.getsize(self.file_name) > 0:
                 file.write(',')
             file.write(order_id)
 
     def clear_order_id(self):
-        # Clear the contents of the file and reset the existing IDs set
         with open(self.file_name, 'w') as file:
             file.write('')
         self.existing_ids.clear()
