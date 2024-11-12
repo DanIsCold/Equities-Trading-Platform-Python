@@ -34,7 +34,7 @@ class DatabaseHandler():
         # Check if it's currently a weekend (Saturday or Sunday)
         if current_time.weekday() >= 5:  # 5 = Saturday, 6 = Sunday
             return True
-
+        
         # Check if the current time is after end_time and before 13:30 the next day
         return end_time < current_time < target_time_next_day
 
@@ -80,7 +80,8 @@ class DatabaseHandler():
                         row['l'],
                         row['n'],
                         row['o'],
-                        datetime.strptime(row['t'], '%Y-%m-%dT%H:%M:%SZ'),
+                        #datetime.strptime(row['t'], '%Y-%m-%dT%H:%M:%SZ'),
+                        row['t'],
                         row['v'],
                         row['vw']
                     ) for row in market_data
@@ -102,5 +103,3 @@ class DatabaseHandler():
                     print("Database connection closed.")
 
 
-joe = DatabaseHandler('AAPL', '1Min', '2024-01-03T14:30:00Z', '2024-01-03T21:00:00Z')
-joe.connect_and_insert(1000, 'iex', 'USD')
