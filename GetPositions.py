@@ -13,4 +13,6 @@ class getPositions():
         portfolio = trading_client.get_all_positions()
         #just prints the positions - will be reworked to pass front end the data 
         for position in portfolio:
-            print("{} shares of {}".format(position.qty, position.symbol))
+            print(f"{position.qty} shares of {position.symbol}")
+
+joe = getPositions().get_all_positions()
