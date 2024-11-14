@@ -72,17 +72,26 @@ class marketDataHandler:
 
 
     def check_market_open(self):
-        #checks if markets in US are open - opening hrs 0930 - 1630
+        #checks if markets in US are open - opening hrs 0930 - 1600
         #Honestly dont know if this even works...
         open_time = time(9,30)
-        close_time = time(16,30)
+        close_time = time(16,00)
         curr_uk_time = datetime.now(pytz.UTC)
         us_time = pytz.timezone("US/Eastern")
         curr_us_time = curr_uk_time.astimezone(us_time).time()
 
         return open_time <= curr_us_time <= close_time
+    
 
-'''
+    def write_market_data_to_file(self, symbol, time_frame):
+        safe_end_time = self.end_time.replace(":", "_")
+        #call fetch market data and write it to a file within the same directory
+        market_data = self.fetch_market_data(symbol, time_frame)
+        with io.open(f"{symbol}_{time_frame}_{safe_end_time}.json", 'w', encoding='utf-8') as file:
+            json.dump(market_data, file, ensure_ascii=False, indent=4)
+
+
+    '''
     def plot_candle(self, symbol, time_frame):
         
         end_time = "2024-11-01T20:00:00Z"
@@ -104,4 +113,4 @@ class marketDataHandler:
         else:
             print(loaded_data["error"])
         return
-'''
+    '''
