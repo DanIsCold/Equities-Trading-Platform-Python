@@ -131,41 +131,64 @@ class DatabaseHandler():
         return closest_timestamp
         
 
-    
+    # Build full hourly market data history for a given symbol
     def build_hourly_data(self, symbol):
-        conn = psycopg2.connect(**db_config)
-        cursor = conn.cursor()
+        # conn2 and cursor2 used becuase conn and cursor are used in the connect_and_insert function
+        # should probably be refactored to use the same connection and cursor
+        conn2 = psycopg2.connect(**db_config)
+        cursor2 = conn2.cursor()
         
         # get the most recent and oldest date existing in the database table
-        cursor.execute(f"SELECT MIN(time), MAX(time) FROM minute_market_data WHERE symbol = '{symbol}'")
-        oldest_date, newest_date = cursor.fetchone()
+        cursor2.execute(f"SELECT MIN(time), MAX(time) FROM minute_market_data WHERE symbol = '{symbol}'")
+        oldest_date, newest_date = cursor2.fetchone()
 
         # if oldest_date is None, set it to the 1st of January 2018 in the format 'YYYY-MM-DDTHH:00:00Z'
         if oldest_date is None:
             print("No data in the database, fetching data from the beginning...")
-            oldest_date = '2018-01-01T00:00:00Z'
-            newest_date = '2018-01-01T00:00:00Z'
+            oldest_date = datetime(2018, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
+            newest_date = datetime(2018, 1, 1, 0, 0, 0, tzinfo=timezone.utc)
     
         # get the closest trading timestamp to the current time in UTC
         closest_trading_timestamp = self.closest_trading_timestamp()
 
+        count = 0
+
         # while the most recent date in the database is less than the closest trading timestamp
         while newest_date < closest_trading_timestamp:
             print(f"Newest data in the database: {newest_date}")
+
+            # Format datetimes to strings for the API request
+            oldest_date_str = oldest_date.strftime('%Y-%m-%dT%H:%M:%SZ')
+            closest_trading_timestamp_str = closest_trading_timestamp.strftime('%Y-%m-%dT%H:%M:%SZ')
             
             # insert the next 10000 records into the database
-            self.connect_and_insert(symbol, '1H', str(oldest_date), str(closest_trading_timestamp), 10000, 'iex', 'USD')
+            self.connect_and_insert(symbol, '30M', oldest_date_str, closest_trading_timestamp_str, 10000, 'iex', 'USD')
 
-            #get the most recent and oldest date existing in the database table
-            cursor.execute(f"SELECT MIN(time), MAX(time) FROM minute_market_data WHERE symbol = '{symbol}'")
-            db_oldest_date, newest_date = cursor.fetchone()
+            count += 1
 
-            # if db_oldest_date is None, insert has failed, break the loop
-            if db_oldest_date is None:
-                print("Insert failed, breaking loop.")
+            # get the most recent timestamp in the database
+            cursor2.execute(f"SELECT MAX(time) FROM hourly_market_data WHERE symbol = '{symbol}'")
+            db_newest_date = cursor2.fetchone()[0]
+
+            # ensure timestamp is timezone aware
+            if db_newest_date is not None:
+                db_newest_date = db_newest_date.replace(tzinfo=timezone.utc)
+
+            # if db_newest_date is the same as newest_date, break the loop
+            if db_newest_date == newest_date:
+                print("Newest timestamp unchanged, breaking loop.")
                 break
+
+            newest_date = db_newest_date
+
+            #add an hour to db_newest_date and assign it to oldest_date_str
+            oldest_date_str = newest_date + timedelta(hours=1)
+
+            #An error occurred: duplicate key value violates unique constraint "9_9_hourly_market_data_pkey"
+            #DETAIL:  Key (symbol, "time")=(AAPL, 2020-07-27 13:00:00+00) already exists.
+            
         
-        cursor.close()
-        conn.close()
-        print("Hourly market data constructed.")
+        cursor2.close()
+        conn2.close()
+        print(f"Hourly market data constructed in {count} API calls.")
         print("Database connection closed.")
