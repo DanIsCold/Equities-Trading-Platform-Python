@@ -83,14 +83,14 @@ class DatabaseHandler():
 
         # if current time is a weekend, return the closest trading timestamp on Friday
         if current_time.weekday() == 5:
-            closest_timestamp = current_time.replace(hour=16, minute=0, second=0, microsecond=0) - timedelta(days=1)
+            closest_timestamp = current_time.replace(hour=21, minute=0, second=0, microsecond=0) - timedelta(days=1)
         elif current_time.weekday() == 6:
-            closest_timestamp = current_time.replace(hour=16, minute=0, second=0, microsecond=0) - timedelta(days=2)
+            closest_timestamp = current_time.replace(hour=21, minute=0, second=0, microsecond=0) - timedelta(days=2)
         else:
 
             # define trading hours in UTC
-            trading_start = current_time.replace(hour=13, minute=30, second=0, microsecond=0)
-            trading_end = current_time.replace(hour=20, minute=0, second=0, microsecond=0)
+            trading_start = current_time.replace(hour=14, minute=30, second=0, microsecond=0)
+            trading_end = current_time.replace(hour=21, minute=0, second=0, microsecond=0)
 
             # if current time is outside trading hours, return the closest trading timestamp
             if current_time < trading_start:
@@ -144,7 +144,7 @@ class DatabaseHandler():
             count += 1
 
             # get the most recent timestamp in the database
-            cursor2.execute(f"SELECT MAX(time) FROM hourly_market_data WHERE symbol = '{symbol}'")
+            cursor2.execute(f"SELECT MAX(time) FROM {db_table} WHERE symbol = '{symbol}'")
             db_newest_date = cursor2.fetchone()[0]
 
             # ensure timestamp is timezone aware
