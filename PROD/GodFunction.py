@@ -10,7 +10,7 @@ class godFunction():
     def db_handler_test(self):
         dbHandler = DatabaseHandler()
         #dbHandler.connect_and_insert(limit,feed,currency)
-        dbHandler.build_hourly_data('AAPL')
+        dbHandler.build_market_data('AAPL', '30Min', 'hourly_market_data')
 
     def md_handler_test(self):
         mdHandler = marketDataHandler('2017-11-13T00:00:00Z', '2024-11-13T20:00:00Z', 10000, 'iex', 'USD')

@@ -35,29 +35,25 @@ class DatabaseHandler():
         return False
 
 
-    # Make API fetch request and insert data into the database
-    def connect_and_insert(self, conn, cursor, symbol, timeframe, start_time, end_time, limit, feed, currency):
-        '''
-        if self.outside_hours(end_time):
-            print('Outside market hours, no request created!')
-            return  # Exit the function if outside hours
-        '''
-
-        # Continue with data fetching and inserting if within hours
+    # Fetch market data for given values from the API
+    def api_fetch(self, symbol, timeframe, start_time, end_time, limit, feed, currency):
         market_data_handler = marketDataHandler(start_time, end_time, limit, feed, currency)
         market_data = market_data_handler.fetch_market_data(symbol, timeframe)
+        return market_data
 
+
+    # Connects to the database and inserts the fetched market data to given table
+    def insert_data(self, conn, cursor, symbol, market_data, table):
         try:
-            print("Connected to the database.")
-                
+            print("Inserting to the database...")
+
             # Insert query using execute_values for efficient bulk insertion
-            insert_query = """
-            INSERT INTO hourly_market_data (
+            insert_query = f"""
+            INSERT INTO {table} (
                 symbol, close_price, high_price, low_price, trade_count, open_price, time, volume, volume_weighted
             ) VALUES %s
             """
 
-            
             values = [
                 (
                     symbol,
@@ -79,13 +75,6 @@ class DatabaseHandler():
 
         except Exception as e:
             print("An error occurred:", e)
-
-        # finally:
-        #     # Close the connection
-        #     if conn:
-        #         cursor.close()
-        #         conn.close()
-        #         print("Database connection closed.")
 
     
     # Returns the closest trading timestamp to the current time in UTC in the format 'YYYY-MM-DDTHH:00:00Z'
@@ -117,7 +106,7 @@ class DatabaseHandler():
         
 
     # Build full hourly market data history for a given symbol
-    def build_hourly_data(self, symbol):
+    def build_market_data(self, symbol, timeframe, db_table):
         # conn2 and cursor2 used becuase conn and cursor are used in the connect_and_insert function
         # should probably be refactored to use the same connection and cursor
         conn2 = psycopg2.connect(**db_config)
@@ -140,14 +129,17 @@ class DatabaseHandler():
 
         # while the most recent date in the database is less than the closest trading timestamp
         while newest_date < closest_trading_timestamp:
-            print(f"Newest data in the database: {newest_date}")
+            print(f"Fetching data from {newest_date} onwards")
 
             # Format datetimes to strings for the API request
             oldest_date_str = oldest_date.strftime('%Y-%m-%dT%H:%M:%SZ')
             closest_trading_timestamp_str = closest_trading_timestamp.strftime('%Y-%m-%dT%H:%M:%SZ')
             
-            # insert the next 10000 records into the database
-            self.connect_and_insert(conn2, cursor2, symbol, '30Min', oldest_date_str, closest_trading_timestamp_str, 10000, 'iex', 'USD')
+            # fetch market data from the API
+            fetched_market_data = self.api_fetch(symbol, timeframe, oldest_date_str, closest_trading_timestamp_str, 10000, 'iex', 'USD')
+            
+            # insert the fetched market data to the database
+            self.insert_data(conn2, cursor2, symbol, fetched_market_data, db_table)
 
             count += 1
 
@@ -166,14 +158,8 @@ class DatabaseHandler():
 
             newest_date = db_newest_date
 
-            print(f"Newest data in the database: {newest_date}")
-            print(f"Oldest data in the database: {oldest_date}")
-
-            #add 30 minutes to the oldest date
+            # add 30 minutes to the oldest date
             oldest_date = newest_date + timedelta(minutes=30)
-
-            #An error occurred: duplicate key value violates unique constraint "9_9_hourly_market_data_pkey"
-            #DETAIL:  Key (symbol, "time")=(AAPL, 2020-07-27 13:00:00+00) already exists.
             
         
         cursor2.close()
