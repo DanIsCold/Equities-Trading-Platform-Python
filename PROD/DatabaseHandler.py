@@ -113,7 +113,7 @@ class DatabaseHandler():
         cursor2 = conn2.cursor()
         
         # get the most recent and oldest date existing in the database table
-        cursor2.execute(f"SELECT MIN(time), MAX(time) FROM minute_market_data WHERE symbol = '{symbol}'")
+        cursor2.execute(f"SELECT MIN(time), MAX(time) FROM {db_table} WHERE symbol = '{symbol}'")
         oldest_date, newest_date = cursor2.fetchone()
 
         # if oldest_date is None, set it to the 1st of January 2018 in the format 'YYYY-MM-DDTHH:00:00Z'
