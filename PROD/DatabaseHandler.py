@@ -6,7 +6,11 @@ import pytz
 import json
 import os
 
-with open(f'{os.getcwd()}\db_config.json') as f:
+current_dir = os.path.dirname(os.path.abspath(__file__))
+working_directory = os.path.abspath(os.path.join(current_dir, os.pardir))
+config_path = os.path.join(working_directory, "db_config.json")
+
+with open(config_path) as f:
             db_config = json.load(f)
             
 

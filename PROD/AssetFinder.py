@@ -4,7 +4,11 @@ from alpaca.trading.enums import AssetClass
 import os
 import json
 
-with open(f'{os.getcwd()}\config.json') as f:
+current_dir = os.path.dirname(os.path.abspath(__file__))
+working_directory = os.path.abspath(os.path.join(current_dir, os.pardir))
+config_path = os.path.join(working_directory, "config.json")
+
+with open(config_path) as f:
             config = json.load(f)
 apikey = config['api_key']
 secretkey = config['secret_key']
