@@ -2,9 +2,15 @@ from alpaca.trading.client import TradingClient
 from alpaca.trading.requests import MarketOrderRequest, LimitOrderRequest, TakeProfitRequest, StopLossRequest, TrailingStopOrderRequest
 from alpaca.trading.enums import OrderSide, TimeInForce, OrderClass
 from ClordidGen import clordidGenerator
-import time
+import os
+import json
 
-trading_client = TradingClient('PK14CV687K30ALR8RMUG', 'Fh19ACB7Kb98LwPB3Wsiu7koQCaaEA08Rt5PiXsP', paper=True)
+with open(f'{os.getcwd()}\config.json') as f:
+            config = json.load(f)
+apikey = config['api_key']
+secretkey = config['secret_key']
+
+trading_client = TradingClient(apikey, secretkey, paper=True)
 clordid = clordidGenerator().generate_order_id()
 
 class createTrade():

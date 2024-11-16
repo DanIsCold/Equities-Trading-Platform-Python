@@ -1,8 +1,15 @@
 from alpaca.trading.client import TradingClient
 from alpaca.trading.requests import GetAssetsRequest
 from alpaca.trading.enums import AssetClass
+import os
+import json
 
-trading_client = TradingClient('PK14CV687K30ALR8RMUG', 'Fh19ACB7Kb98LwPB3Wsiu7koQCaaEA08Rt5PiXsP', paper=True)
+with open(f'{os.getcwd()}\config.json') as f:
+            config = json.load(f)
+apikey = config['api_key']
+secretkey = config['secret_key']
+
+trading_client = TradingClient(apikey, secretkey, paper=True)
 
 class assetFinder():
     def __init__(self) -> None:

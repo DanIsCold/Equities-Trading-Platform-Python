@@ -3,15 +3,12 @@ from psycopg2.extras import execute_values
 from datetime import datetime, timedelta, timezone, date
 from MarketDataHandler import marketDataHandler
 import pytz
+import json
+import os
 
 
-db_config = {
-    'dbname': 'railway',
-    'user': 'postgres',
-    'password': '1cbceGbfE1gBDbffGDD4EbfCf356e6gg',
-    'host': 'junction.proxy.rlwy.net',
-    'port': 53812
-}
+with open(f'{os.getcwd()}\db_config.json') as f:
+            db_config = json.load(f)
 
 
 class DatabaseHandler():

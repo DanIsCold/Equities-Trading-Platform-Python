@@ -7,6 +7,13 @@ import matplotlib.dates as mdates
 import mplfinance as mpf
 from datetime import datetime, time
 import pytz 
+import os
+
+with open(f'{os.getcwd()}\config.json') as f:
+            config = json.load(f)
+apikey = config['api_key']
+secretkey = config['secret_key']
+
 
 class marketDataHandler:
     def __init__(self, start_time, end_time, limit, feed, currency):
@@ -35,8 +42,8 @@ class marketDataHandler:
 
         headers = {
             "accept": "application/json",
-            "APCA-API-KEY-ID": "PK14CV687K30ALR8RMUG",
-            "APCA-API-SECRET-KEY": "Fh19ACB7Kb98LwPB3Wsiu7koQCaaEA08Rt5PiXsP"
+            "APCA-API-KEY-ID": apikey,
+            "APCA-API-SECRET-KEY": secretkey
         }
 
         response = requests.get(url, params=params, headers=headers)
