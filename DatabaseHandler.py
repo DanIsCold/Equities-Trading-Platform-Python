@@ -6,10 +6,9 @@ import pytz
 import json
 import os
 
-
 with open(f'{os.getcwd()}\db_config.json') as f:
             db_config = json.load(f)
-
+            
 
 class DatabaseHandler():
     def __init__(self):
@@ -33,7 +32,7 @@ class DatabaseHandler():
 
 
     # Make API fetch request and insert data into the database
-    def connect_and_insert(self, symbol, timeframe, start_time, end_time, limit, feed, currency):
+    def connect_and_insert(self, conn, cursor, symbol, timeframe, start_time, end_time, limit, feed, currency):
         '''
         if self.outside_hours(end_time):
             print('Outside market hours, no request created!')
@@ -45,22 +44,7 @@ class DatabaseHandler():
         market_data = market_data_handler.fetch_market_data(symbol, timeframe)
 
         try:
-            conn = psycopg2.connect(**db_config)
-            cursor = conn.cursor()
             print("Connected to the database.")
-
-            '''
-            try:
-                # SQL command to delete all rows in the market_data table
-                cursor.execute("DELETE FROM minute_market_data;")
-                # Commit the transaction
-                conn.commit()
-                print("All rows in 'market_data' table deleted successfully.")
-            except Exception as e:
-                print("Error deleting rows:", e)
-                # Rollback if there is an error
-                conn.rollback()
-            '''
                 
             # Insert query using execute_values for efficient bulk insertion
             insert_query = """
@@ -92,14 +76,14 @@ class DatabaseHandler():
         except Exception as e:
             print("An error occurred:", e)
 
-        finally:
-            # Close the connection
-            if conn:
-                cursor.close()
-                conn.close()
-                print("Database connection closed.")
-    
+        # finally:
+        #     # Close the connection
+        #     if conn:
+        #         cursor.close()
+        #         conn.close()
+        #         print("Database connection closed.")
 
+    
     # Returns the closest trading timestamp to the current time in UTC in the format 'YYYY-MM-DDTHH:00:00Z'
     def closest_trading_timestamp(self):
         current_time = datetime.now(timezone.utc)
@@ -159,7 +143,7 @@ class DatabaseHandler():
             closest_trading_timestamp_str = closest_trading_timestamp.strftime('%Y-%m-%dT%H:%M:%SZ')
             
             # insert the next 10000 records into the database
-            self.connect_and_insert(symbol, '30M', oldest_date_str, closest_trading_timestamp_str, 10000, 'iex', 'USD')
+            self.connect_and_insert(conn2, cursor2, symbol, '30Min', oldest_date_str, closest_trading_timestamp_str, 10000, 'iex', 'USD')
 
             count += 1
 
@@ -178,8 +162,11 @@ class DatabaseHandler():
 
             newest_date = db_newest_date
 
-            #add an hour to db_newest_date and assign it to oldest_date_str
-            oldest_date_str = newest_date + timedelta(hours=1)
+            print(f"Newest data in the database: {newest_date}")
+            print(f"Oldest data in the database: {oldest_date}")
+
+            #add 30 minutes to the oldest date
+            oldest_date = newest_date + timedelta(minutes=30)
 
             #An error occurred: duplicate key value violates unique constraint "9_9_hourly_market_data_pkey"
             #DETAIL:  Key (symbol, "time")=(AAPL, 2020-07-27 13:00:00+00) already exists.
