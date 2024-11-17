@@ -123,7 +123,7 @@ class marketDataHandler:
 
     async def thread_save(self, symbol, time_frame, session):
         market_data = await self.aysnc_fetch_market_data(symbol, time_frame, session)
-        print(market_data)
+        print(market_data) # used for debugging remove when fixed
         directory = os.path.join(os.path.dirname(os.path.abspath(__file__)), "threadedFiles")
         safe_end_time = self.end_time.replace(":", "_")
         file_path = os.path.join(directory, f"threaded_{symbol}_{time_frame}_{safe_end_time}.json")
