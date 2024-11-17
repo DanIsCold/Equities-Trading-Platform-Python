@@ -1,12 +1,9 @@
-import requests
 import io
 import json
-import pandas as pd
-import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
-import mplfinance as mpf
+import requests
+import pytz
 from datetime import datetime, time
-import pytz 
+from APIRateLimiter import APIRateLimiter
 import os
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -14,57 +11,50 @@ working_directory = os.path.abspath(os.path.join(current_dir, os.pardir))
 config_path = os.path.join(working_directory, "config.json")
 
 with open(config_path) as f:
-            config = json.load(f)
+    config = json.load(f)
 apikey = config['api_key']
 secretkey = config['secret_key']
 
 
 class marketDataHandler:
-    def __init__(self, start_time, end_time, limit, feed, currency):
+    def __init__(self, start_time, end_time, limit, feed, currency, rate_limiter):
         self.start_time = start_time
         self.end_time = end_time
         self.limit = limit
         self.feed = feed
         self.currency = currency
-
+        self.api_call_count = 0
+        self.rate_limiter = rate_limiter
 
     def fetch_market_data(self, symbol, time_frame):
-        #check if market open, if open run this, if not pull data from db
+        """Fetch market data from the Alpaca API."""
         url = "https://data.alpaca.markets/v2/stocks/bars"
-
         params = {
-            "symbols": symbol,          # The stock symbol to fetch data for
-            "timeframe": time_frame,       # Timeframe for the data (e.g., 1Min, 5Min, 1Day)
-            "start" : self.start_time,
-            "end" : self.end_time,
-            "limit": self.limit,             # The number of data points to fetch
-            "adjustment": 'raw',       # Type of adjustment (e.g., raw, split, dividend)
-            "feed": self.feed,             # The data feed source
-            "currency": self.currency,         # The currency of the data
-            "sort": "asc"              # Sort order (e.g., ascending or descending)
+            "symbols": symbol,
+            "timeframe": time_frame,
+            "start": self.start_time,
+            "end": self.end_time,
+            "limit": self.limit,
+            "adjustment": 'raw',
+            "feed": self.feed,
+            "currency": self.currency,
+            "sort": "asc"
         }
-
         headers = {
             "accept": "application/json",
             "APCA-API-KEY-ID": apikey,
             "APCA-API-SECRET-KEY": secretkey
         }
-
         response = requests.get(url, params=params, headers=headers)
 
-        #print(response.text[:500])
-
         if response.status_code == 200:
-            self.data = response.json()
-
-            if "bars" in self.data and symbol in self.data["bars"]:
-                bars_data = self.data["bars"][symbol]
-                return bars_data  # Return the actual data received
+            data = response.json()
+            self.api_call_count += 1
+            if "bars" in data and symbol in data["bars"]:
+                return data["bars"][symbol]
             else:
-                print("Error: No relevant data available.")
                 return {"error": "No relevant data available"}
         else:
-            print(f"Error: Failed data fetch, code: {response.status_code}")
             return {"error": f"Failed data fetch, code: {response.status_code}"}
 
 
@@ -100,6 +90,29 @@ class marketDataHandler:
         market_data = self.fetch_market_data(symbol, time_frame)
         with io.open(f"{symbol}_{time_frame}_{safe_end_time}.json", 'w', encoding='utf-8') as file:
             json.dump(market_data, file, ensure_ascii=False, indent=4)
+
+       
+
+    def threaded_request(self, symbol, time_frame):
+        """Queue API calls and write market data to a file."""
+        #this funky nested function is used to give the threading a callback fun
+        def save_to_file(data):
+            directory = os.path.join(os.path.dirname(os.path.abspath(__file__)), "threadedFiles")
+            safe_end_time = self.end_time.replace(":", "_")
+            file_path = os.path.join(directory, f"threaded_{symbol}_{time_frame}_{safe_end_time}.json")
+            
+            with io.open(file_path, 'w', encoding='utf-8') as file:
+                json.dump(data, file, ensure_ascii=False, indent=4)
+
+            print(f"Data saved for {symbol} at {file_path}")
+
+        # Add the API call to the rate limiter queue
+        self.rate_limiter.add_request(
+            self.fetch_market_data,
+            symbol,
+            time_frame,
+            callback=save_to_file
+        )
 
 
     '''
