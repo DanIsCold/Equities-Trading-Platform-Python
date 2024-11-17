@@ -5,6 +5,8 @@ import pytz
 from datetime import datetime, time
 from APIRateLimiter import APIRateLimiter
 import os
+import aiohttp
+import asyncio
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 working_directory = os.path.abspath(os.path.join(current_dir, os.pardir))
@@ -48,9 +50,9 @@ class marketDataHandler:
             "APCA-API-KEY-ID": apikey,
             "APCA-API-SECRET-KEY": secretkey
         }
-        response = requests.get(url, params=params, headers=headers)
+        response = response.get(url, params=params, headers=headers) 
 
-        if response.status_code == 200:
+        if response.status == 200:
             data = response.json()
             self.api_call_count += 1
             if "bars" in data and symbol in data["bars"]:
@@ -58,21 +60,46 @@ class marketDataHandler:
             else:
                 return {"error": "No relevant data available"}
         else:
-            return {"error": f"Failed data fetch, code: {response.status_code}"}
+            return {"error": f"Failed data fetch, code: {response.status}"}
+            
+    async def aysnc_fetch_market_data(self, symbol, time_frame, session):
+        """Fetch market data from the Alpaca API."""
+        if self.rate_limiter:
+            self.rate_limiter.add_call()
+
+        url = "https://data.alpaca.markets/v2/stocks/bars"
+        params = {
+            "symbols": symbol,
+            "timeframe": time_frame,
+            "start": self.start_time,
+            "end": self.end_time,
+            "limit": self.limit,
+            "adjustment": 'raw',
+            "feed": self.feed,
+            "currency": self.currency,
+            "sort": "asc"
+        }
+        headers = {
+            "accept": "application/json",
+            "APCA-API-KEY-ID": apikey,
+            "APCA-API-SECRET-KEY": secretkey
+        }
+        async with session.get(url, params=params, headers=headers) as response:
+            if response.status == 200:
+                data = await response.json()
+                self.api_call_count += 1
+                if "bars" in data and symbol in data["bars"]:
+                    return data["bars"][symbol]
+                else:
+                    return {"error": "No relevant data available"}
+            else:
+                return {"error": f"Failed data fetch, code: {response.status}"}
 
 
 #This function now will get called if market is closed. So instead of reading from a 
 #file it has to check the database for the info 
     def load_data_from_file(self, symbol, time_frame):
-        safe_end_time = self.end_time.replace(":", "|")  # Ensure this is consistent
-        try:
-            with io.open(f"{symbol}_{time_frame}_{safe_end_time}.json", 'r', encoding='utf-8') as file:
-                data = json.load(file)
-            return data
-        except FileNotFoundError:
-            return {"error": "File not found. Has it been fetched first?"}
-        except json.JSONDecodeError:
-            return {"error": "Error decoding file"}
+        pass
 
 
     def check_market_open(self):
@@ -94,8 +121,9 @@ class marketDataHandler:
         with io.open(f"{symbol}_{time_frame}_{safe_end_time}.json", 'w', encoding='utf-8') as file:
             json.dump(market_data, file, ensure_ascii=False, indent=4)
 
-    def thread_save(self, symbol, time_frame):
-        market_data = self.fetch_market_data(symbol, time_frame)
+    async def thread_save(self, symbol, time_frame, session):
+        market_data = await self.aysnc_fetch_market_data(symbol, time_frame, session)
+        print(market_data)
         directory = os.path.join(os.path.dirname(os.path.abspath(__file__)), "threadedFiles")
         safe_end_time = self.end_time.replace(":", "_")
         file_path = os.path.join(directory, f"threaded_{symbol}_{time_frame}_{safe_end_time}.json")
@@ -104,29 +132,6 @@ class marketDataHandler:
             json.dump(market_data, file, ensure_ascii=False, indent=4)
 
         print(f"Data saved for {symbol} at {file_path}")
-
-       
-
-    # def threaded_request(self, symbol, time_frame):
-    #     """Queue API calls and write market data to a file."""
-    #     #this funky nested function is used to give the threading a callback fun
-    #     def save_to_file(data):
-    #         directory = os.path.join(os.path.dirname(os.path.abspath(__file__)), "threadedFiles")
-    #         safe_end_time = self.end_time.replace(":", "_")
-    #         file_path = os.path.join(directory, f"threaded_{symbol}_{time_frame}_{safe_end_time}.json")
-            
-    #         with io.open(file_path, 'w', encoding='utf-8') as file:
-    #             json.dump(data, file, ensure_ascii=False, indent=4)
-
-    #         print(f"Data saved for {symbol} at {file_path}")
-
-    #     # Add the API call to the rate limiter queue
-    #     self.rate_limiter.add_request(
-    #         self.fetch_market_data,
-    #         symbol,
-    #         time_frame,
-    #         callback=save_to_file
-    #     )
 
 
     '''

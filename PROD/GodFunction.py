@@ -3,6 +3,8 @@
 from MarketDataHandler import marketDataHandler
 from DatabaseHandler import DatabaseHandler
 from APIRateLimiter import APIRateLimiter
+import aiohttp
+import asyncio
 
 list = [
     "AAPL", "MSFT", "NVDA", "TSLA", "GOOG", "GOOGL", "META", "AMD", "INTC", "CRM", 
@@ -48,11 +50,13 @@ class godFunction():
         mdHandler = marketDataHandler('2017-11-13T00:00:00Z', '2024-11-13T20:00:00Z', 10000, 'iex', 'USD')
         mdHandler.write_market_data_to_file('AAPL', '1H')
 
-    def md_threaded_calls(self):
-        mdHandler = marketDataHandler('2017-11-13T00:00:00Z', '2024-11-13T21:00:00Z', 10000, 'iex', 'USD',self.rate_limiter)
-        for symbol in list:
-            mdHandler.thread_save(symbol, '1H')
+    async def md_threaded_calls_async(self):
+        """Make asynchronous API calls for multiple symbols."""
+        mdHandler = marketDataHandler('2017-11-13T00:00:00Z', '2024-11-13T21:00:00Z', 10000, 'iex', 'USD', self.rate_limiter)
+        async with aiohttp.ClientSession() as session:
+            tasks = [mdHandler.thread_save(session, symbol, '1H') for symbol in list]
+            await asyncio.gather(*tasks)
 
 #DB HANDLER CURRENTLY TRIES TO WRITE TO hour_market_data TABLE
 shum = godFunction()
-shum.md_threaded_calls()
+asyncio.run(shum.md_threaded_calls_async())
