@@ -2,7 +2,7 @@
 
 from MarketDataHandler import marketDataHandler
 from DatabaseHandler import DatabaseHandler
-from APIRateLimiter import APIRateLimiter\
+from APIRateLimiter import APIRateLimiter
 
 list = [
     "AAPL", "MSFT", "NVDA", "TSLA", "GOOG", "GOOGL", "META", "AMD", "INTC", "CRM", 
@@ -50,11 +50,8 @@ class godFunction():
 
     def md_threaded_calls(self):
         mdHandler = marketDataHandler('2017-11-13T00:00:00Z', '2024-11-13T21:00:00Z', 10000, 'iex', 'USD',self.rate_limiter)
-        
-        for i in range(len(list)):
-            mdHandler.threaded_request(list[i], "1Min")
-            
-        self.rate_limiter.stop()
+        for symbol in list:
+            mdHandler.thread_save(symbol, '1H')
 
 #DB HANDLER CURRENTLY TRIES TO WRITE TO hour_market_data TABLE
 shum = godFunction()

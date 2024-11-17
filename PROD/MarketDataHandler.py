@@ -28,6 +28,9 @@ class marketDataHandler:
 
     def fetch_market_data(self, symbol, time_frame):
         """Fetch market data from the Alpaca API."""
+        if self.rate_limiter:
+            self.rate_limiter.add_call()
+
         url = "https://data.alpaca.markets/v2/stocks/bars"
         params = {
             "symbols": symbol,
@@ -91,28 +94,39 @@ class marketDataHandler:
         with io.open(f"{symbol}_{time_frame}_{safe_end_time}.json", 'w', encoding='utf-8') as file:
             json.dump(market_data, file, ensure_ascii=False, indent=4)
 
+    def thread_save(self, symbol, time_frame):
+        market_data = self.fetch_market_data(symbol, time_frame)
+        directory = os.path.join(os.path.dirname(os.path.abspath(__file__)), "threadedFiles")
+        safe_end_time = self.end_time.replace(":", "_")
+        file_path = os.path.join(directory, f"threaded_{symbol}_{time_frame}_{safe_end_time}.json")
+        
+        with io.open(file_path, 'w', encoding='utf-8') as file:
+            json.dump(market_data, file, ensure_ascii=False, indent=4)
+
+        print(f"Data saved for {symbol} at {file_path}")
+
        
 
-    def threaded_request(self, symbol, time_frame):
-        """Queue API calls and write market data to a file."""
-        #this funky nested function is used to give the threading a callback fun
-        def save_to_file(data):
-            directory = os.path.join(os.path.dirname(os.path.abspath(__file__)), "threadedFiles")
-            safe_end_time = self.end_time.replace(":", "_")
-            file_path = os.path.join(directory, f"threaded_{symbol}_{time_frame}_{safe_end_time}.json")
+    # def threaded_request(self, symbol, time_frame):
+    #     """Queue API calls and write market data to a file."""
+    #     #this funky nested function is used to give the threading a callback fun
+    #     def save_to_file(data):
+    #         directory = os.path.join(os.path.dirname(os.path.abspath(__file__)), "threadedFiles")
+    #         safe_end_time = self.end_time.replace(":", "_")
+    #         file_path = os.path.join(directory, f"threaded_{symbol}_{time_frame}_{safe_end_time}.json")
             
-            with io.open(file_path, 'w', encoding='utf-8') as file:
-                json.dump(data, file, ensure_ascii=False, indent=4)
+    #         with io.open(file_path, 'w', encoding='utf-8') as file:
+    #             json.dump(data, file, ensure_ascii=False, indent=4)
 
-            print(f"Data saved for {symbol} at {file_path}")
+    #         print(f"Data saved for {symbol} at {file_path}")
 
-        # Add the API call to the rate limiter queue
-        self.rate_limiter.add_request(
-            self.fetch_market_data,
-            symbol,
-            time_frame,
-            callback=save_to_file
-        )
+    #     # Add the API call to the rate limiter queue
+    #     self.rate_limiter.add_request(
+    #         self.fetch_market_data,
+    #         symbol,
+    #         time_frame,
+    #         callback=save_to_file
+    #     )
 
 
     '''
