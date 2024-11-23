@@ -38,6 +38,7 @@ class DatabaseHandler():
     # Fetch market data for given values from the API
     def api_fetch(self, symbol, timeframe, start_time, end_time, limit, feed, currency):
         market_data_handler = marketDataHandler(start_time, end_time, limit, feed, currency)
+        #need to make this line call the async_fetch to work?
         market_data = market_data_handler.fetch_market_data(symbol, timeframe)
         return market_data
 

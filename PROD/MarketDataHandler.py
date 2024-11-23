@@ -86,6 +86,7 @@ class marketDataHandler:
         }
         async with session.get(url, params=params, headers=headers) as response:
             if response.status == 200:
+                print("API call excuted")
                 data = await response.json()
                 self.api_call_count += 1
                 if "bars" in data and symbol in data["bars"]:
