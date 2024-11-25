@@ -54,7 +54,7 @@ class godFunction():
         """Make asynchronous API calls for multiple symbols."""
         mdHandler = marketDataHandler('2017-11-13T00:00:00Z', '2024-11-13T21:00:00Z', 10000, 'iex', 'USD', self.rate_limiter)
         async with aiohttp.ClientSession() as session:
-            tasks = [mdHandler.thread_save(session, symbol, '1H') for symbol in list]
+            tasks = [mdHandler.thread_save(symbol, '1H',session) for symbol in list]
             await asyncio.gather(*tasks)
 
 #DB HANDLER CURRENTLY TRIES TO WRITE TO hour_market_data TABLE
