@@ -162,7 +162,6 @@ class DatabaseHandler():
             # add 30 minutes to the oldest date
             oldest_date = newest_date + timedelta(minutes=30)
             
-        
         cursor2.close()
         conn2.close()
         print(f"Hourly market data constructed in {count} API calls.")
