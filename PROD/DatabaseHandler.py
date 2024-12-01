@@ -14,7 +14,7 @@ with open(config_path) as f:
             db_config = json.load(f)
             
 
-class DatabaseHandler():
+class databaseHandler():
     def __init__(self):
         pass
 
@@ -44,7 +44,7 @@ class DatabaseHandler():
 
 
     # Connects to the database and inserts the fetched market data to given table
-    def insert_data(self, conn, cursor, symbol, market_data, table):
+    def insert_market_data(self, conn, cursor, symbol, market_data, table):
         try:
             print("Inserting to the database...")
 
@@ -108,8 +108,6 @@ class DatabaseHandler():
 
     # Build full hourly market data history for a given symbol
     def build_market_data(self, symbol, timeframe, db_table):
-        # conn2 and cursor2 used becuase conn and cursor are used in the connect_and_insert function
-        # should probably be refactored to use the same connection and cursor
         conn2 = psycopg2.connect(**db_config)
         cursor2 = conn2.cursor()
         

@@ -1,10 +1,24 @@
 #Temp class for testing functionality between MDHandler and DBHandler
 
 from MarketDataHandler import marketDataHandler
-from DatabaseHandler import DatabaseHandler
+from DatabaseHandler import databaseHandler
 from APIRateLimiter import APIRateLimiter
 import aiohttp
 import asyncio
+import os, json
+
+current_dir = os.path.dirname(os.path.abspath(__file__))
+working_directory = os.path.abspath(os.path.join(current_dir, os.pardir))
+db_config_path = os.path.join(working_directory, "db_config.json")
+config_path = os.path.join(working_directory, "config.json")
+
+with open(db_config_path) as f:
+    db_config = json.load(f)
+
+with open(config_path) as f:
+    config = json.load(f)
+
+# I JUST MOVED DBHANDLER FUNCTIONALITY TO MARKETDATAHANDLER, NEED TO REFORMAT TESTS
 
 list = [
     "AAPL", "MSFT", "NVDA", "TSLA", "GOOG", "GOOGL", "META", "AMD", "INTC", "CRM", 
@@ -42,7 +56,7 @@ class godFunction():
         
 
     def db_handler_test(self):
-        dbHandler = DatabaseHandler()
+        dbHandler = databaseHandler()
         #dbHandler.connect_and_insert(limit,feed,currency)
         dbHandler.build_market_data('IBM', '30Min', 'full_market_data')
 
@@ -59,4 +73,4 @@ class godFunction():
 
 #DB HANDLER CURRENTLY TRIES TO WRITE TO hour_market_data TABLE
 shum = godFunction()
-asyncio.run(shum.md_threaded_calls_async())
+#asyncio.run(shum.md_threaded_calls_async())

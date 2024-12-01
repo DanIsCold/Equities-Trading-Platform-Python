@@ -2,10 +2,9 @@ import io
 import json
 import requests
 import pytz
-from datetime import datetime, time
+from datetime import datetime, timedelta, timezone
 from APIRateLimiter import APIRateLimiter
 import os
-import aiohttp
 import asyncio
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -19,16 +18,15 @@ secretkey = config['secret_key']
 
 
 class marketDataHandler:
-    def __init__(self, start_time, end_time, limit, feed, currency, rate_limiter):
-        self.start_time = start_time
-        self.end_time = end_time
-        self.limit = limit
-        self.feed = feed
-        self.currency = currency
+    def __init__(self, rate_limiter, conn, cursor, db_handler):
         self.api_call_count = 0
         self.rate_limiter = rate_limiter
+        self.conn = conn
+        self.cursor = cursor
+        self.db_handler = db_handler
 
-    def fetch_market_data(self, symbol, time_frame):
+
+    def fetch_market_data(self, symbol, time_frame, start_time, end_time, limit, feed, currency):
         """Fetch market data from the Alpaca API."""
         if self.rate_limiter:
             self.rate_limiter.add_call()
@@ -37,12 +35,12 @@ class marketDataHandler:
         params = {
             "symbols": symbol,
             "timeframe": time_frame,
-            "start": self.start_time,
-            "end": self.end_time,
-            "limit": self.limit,
+            "start": start_time,
+            "end": end_time,
+            "limit": limit,
             "adjustment": 'raw',
-            "feed": self.feed,
-            "currency": self.currency,
+            "feed": feed,
+            "currency": currency,
             "sort": "asc"
         }
         headers = {
@@ -61,6 +59,57 @@ class marketDataHandler:
                 return {"error": "No relevant data available"}
         else:
             return {"error": f"Failed data fetch, code: {response.status}"}
+        
+    
+    def build_historical_data(self, symbol, time_frame, db_table):
+        # get most recent and oldest timestamp from db table
+        self.cursor.exectute(f"SELECT MIN(time), MAX(time) FROM {db_table} WHERE symbol = '{symbol}'")
+        oldest_date, newest_date = self.cursor.fetchone()
+
+        # if oldest_date is None, set it to the 1st of January 2018 in the format 'YYYY-MM-DDTHH:00:00Z'
+        if oldest_date is None:
+            print("No data in the database, fetching data from the beginning...")
+            oldest_date = datetime(2018, 1, 1, 0, 0, 0, tzinfo=pytz.utc)
+            newest_date = datetime(2018, 1, 1, 0, 0, 0, tzinfo=pytz.utc)
+
+        # get the closest trading timestamp to the current time in UTC
+        closest_trading_timestamp = self.closest_trading_timestamp()
+
+        print(f"Fetching data for {symbol} from {newest_date} onwards") 
+
+        # while the most recent date in the database is less than the closest trading timestamp
+        while newest_date < closest_trading_timestamp:
+            # Format datetimes to strings for the API request
+            oldest_date_str = oldest_date.strftime('%Y-%m-%dT%H:%M:%SZ')
+            closest_trading_timestamp_str = closest_trading_timestamp.strftime('%Y-%m-%dT%H:%M:%SZ')
+
+            # fetch market data from the API
+            fetched_market_data = self.fetch_market_data(symbol, time_frame, oldest_date_str, closest_trading_timestamp_str, 10000, 'iex', 'USD')
+
+            # insert the fetched market data to the database
+            self.db_handler.insert_market_data(self.conn, self.cursor, symbol, fetched_market_data, db_table)
+
+            # get the most recent timestamp in the database
+            self.cursor.execute(f"SELECT MAX(time) FROM {db_table} WHERE symbol = '{symbol}'")
+            db_newest_date = self.cursor.fetchone()[0]
+
+            # ensure timestamp is timezone aware
+            if db_newest_date is not None:
+                db_newest_date = db_newest_date.replace(tzinfo=pytz.utc)
+            
+            # if db_newest_date is the same as newest_date, break the loop
+            if db_newest_date == newest_date:
+                print(f"No new data fetched for {symbol}")
+                break
+            
+            # newest_date updated for next iteration
+            newest_date = db_newest_date
+
+            # add 30 minutes to the oldest date
+            oldest_date = newest_date + timedelta(minutes=30)
+        
+        print(f"{time_frame} data for {symbol} fetched and stored in the database")
+
             
     async def aysnc_fetch_market_data(self, symbol, time_frame, session):
         """Fetch market data from the Alpaca API."""
@@ -97,22 +146,32 @@ class marketDataHandler:
                 return {"error": f"Failed data fetch, code: {response.status}"}
 
 
-#This function now will get called if market is closed. So instead of reading from a 
-#file it has to check the database for the info 
-    def load_data_from_file(self, symbol, time_frame):
-        pass
+    # Returns the closest trading timestamp to the current time in UTC in the format 'YYYY-MM-DDTHH:00:00Z'
+    def closest_trading_timestamp(self):
+        current_time = datetime.now(timezone.utc)
 
+        # if current time is a weekend, return the closest trading timestamp on Friday
+        if current_time.weekday() == 5:
+            closest_timestamp = current_time.replace(hour=21, minute=0, second=0, microsecond=0) - timedelta(days=1)
+        elif current_time.weekday() == 6:
+            closest_timestamp = current_time.replace(hour=21, minute=0, second=0, microsecond=0) - timedelta(days=2)
+        else:
 
-    def check_market_open(self):
-        #checks if markets in US are open - opening hrs 0930 - 1600
-        #Honestly dont know if this even works...
-        open_time = time(9,30)
-        close_time = time(16,00)
-        curr_uk_time = datetime.now(pytz.UTC)
-        us_time = pytz.timezone("US/Eastern")
-        curr_us_time = curr_uk_time.astimezone(us_time).time()
+            # define trading hours in UTC
+            trading_start = current_time.replace(hour=14, minute=30, second=0, microsecond=0)
+            trading_end = current_time.replace(hour=21, minute=0, second=0, microsecond=0)
 
-        return open_time <= curr_us_time <= close_time
+            # if current time is outside trading hours, return the closest trading timestamp
+            if current_time < trading_start:
+                closest_timestamp = trading_start
+            elif current_time > trading_end:
+                closest_timestamp = trading_end
+            else:
+                # if current time is within trading hours, return the current time
+                closest_timestamp = current_time
+
+        # Return the closest trading timestamp in the format 'YYYY-MM-DDTHH:MM:SSZ'
+        return closest_timestamp
     
 
     def write_market_data_to_file(self, symbol, time_frame):
