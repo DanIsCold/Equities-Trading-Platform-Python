@@ -1,5 +1,7 @@
 #Temp class for testing functionality between MDHandler and DBHandler
 
+import psycopg2
+from psycopg2.extras import execute_values
 from MarketDataHandler import marketDataHandler
 from DatabaseHandler import databaseHandler
 from APIRateLimiter import APIRateLimiter
@@ -50,19 +52,20 @@ list = [
     "CAH", "MCK", "HSIC", "PDCO", "OMI", "BDX", "BCR", "COV", "VAR", "DVA", "FMS"
 ]
 
+
 class godFunction():
     def __init__(self) -> None:
         self.rate_limiter = APIRateLimiter(max_calls_per_minute=200)
+        self.conn = psycopg2.connect(**db_config)
+        self.cursor = self.conn.cursor()
+        self.dbHandler = databaseHandler(self.conn, self.cursor)
+        self.watchlist = self.dbHandler.get_watchlist()
         
-
-    def db_handler_test(self):
-        dbHandler = databaseHandler()
-        #dbHandler.connect_and_insert(limit,feed,currency)
-        dbHandler.build_market_data('IBM', '30Min', 'full_market_data')
 
     def md_handler_test(self):
         mdHandler = marketDataHandler('2017-11-13T00:00:00Z', '2024-11-13T20:00:00Z', 10000, 'iex', 'USD')
         mdHandler.write_market_data_to_file('AAPL', '1H')
+    
 
     async def md_threaded_calls_async(self):
         """Make asynchronous API calls for multiple symbols."""

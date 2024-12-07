@@ -18,11 +18,9 @@ secretkey = config['secret_key']
 
 
 class marketDataHandler:
-    def __init__(self, rate_limiter, conn, cursor, db_handler):
+    def __init__(self, rate_limiter, db_handler):
         self.api_call_count = 0
         self.rate_limiter = rate_limiter
-        self.conn = conn
-        self.cursor = cursor
         self.db_handler = db_handler
 
 
@@ -87,7 +85,7 @@ class marketDataHandler:
             fetched_market_data = self.fetch_market_data(symbol, time_frame, oldest_date_str, closest_trading_timestamp_str, 10000, 'iex', 'USD')
 
             # insert the fetched market data to the database
-            self.db_handler.insert_market_data(self.conn, self.cursor, symbol, fetched_market_data, db_table)
+            self.db_handler.insert_market_data(symbol, fetched_market_data, db_table)
 
             # get the most recent timestamp in the database
             self.cursor.execute(f"SELECT MAX(time) FROM {db_table} WHERE symbol = '{symbol}'")

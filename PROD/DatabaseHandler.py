@@ -14,9 +14,10 @@ with open(config_path) as f:
             db_config = json.load(f)
             
 
-class databaseHandler():
-    def __init__(self):
-        pass
+class databaseHandler:
+    def __init__(self, conn, cursor):
+        self.conn = conn
+        self.cursor = cursor
 
     
     def outside_hours(self, end_time_str: str):
@@ -44,7 +45,7 @@ class databaseHandler():
 
 
     # Connects to the database and inserts the fetched market data to given table
-    def insert_market_data(self, conn, cursor, symbol, market_data, table):
+    def insert_market_data(self, symbol, market_data, table):
         try:
             print("Inserting to the database...")
 
@@ -70,14 +71,26 @@ class databaseHandler():
             ]
 
             # Use execute_values to perform batch insertion
-            execute_values(cursor, insert_query, values)
-            conn.commit()
+            execute_values(self.cursor, insert_query, values)
+            self.conn.commit()
             print("Data inserted successfully.")
 
         except Exception as e:
             print("An error occurred:", e)
-
     
+
+    def get_watchlist(self):
+         #get symbols from table watchlist and return them as a list
+         try:
+            self.cursor.execute("SELECT symbol FROM watchlist")
+            symbols = self.cursor.fetchall()
+            return symbols
+         
+         except Exception as e:
+              print("Error fetching symbols from watchlist:", e)
+
+
+    '''
     # Returns the closest trading timestamp to the current time in UTC in the format 'YYYY-MM-DDTHH:00:00Z'
     def closest_trading_timestamp(self):
         current_time = datetime.now(timezone.utc)
@@ -164,3 +177,4 @@ class databaseHandler():
         conn2.close()
         print(f"Hourly market data constructed in {count} API calls.")
         print("Database connection closed.")
+        '''
