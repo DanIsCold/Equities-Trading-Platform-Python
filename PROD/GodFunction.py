@@ -60,11 +60,15 @@ class godFunction():
         self.cursor = self.conn.cursor()
         self.dbHandler = databaseHandler(self.conn, self.cursor)
         self.watchlist = self.dbHandler.get_watchlist()
-        
+    
+
+    def market_data_test(self):
+        mdHandler = marketDataHandler(self.dbHandler)
+
 
     def md_handler_test(self):
-        mdHandler = marketDataHandler('2017-11-13T00:00:00Z', '2024-11-13T20:00:00Z', 10000, 'iex', 'USD')
-        mdHandler.write_market_data_to_file('AAPL', '1H')
+        mdHandler = marketDataHandler()
+        mdHandler.build_historical_data('AAPL', '1H', 'hourly_market_data')
     
 
     async def md_threaded_calls_async(self):
@@ -74,6 +78,8 @@ class godFunction():
             tasks = [mdHandler.thread_save(symbol, '1H',session) for symbol in list]
             await asyncio.gather(*tasks)
 
-#DB HANDLER CURRENTLY TRIES TO WRITE TO hour_market_data TABLE
+
+#For reference, our DB tables are as follows: second_market_data, minute_market_data, hourly_market_data, watchlist
 shum = godFunction()
+godFunction.md_handler_test(shum)
 #asyncio.run(shum.md_threaded_calls_async())

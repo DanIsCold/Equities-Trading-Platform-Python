@@ -17,10 +17,10 @@ apikey = config['api_key']
 secretkey = config['secret_key']
 
 
+#needs to recieve a rate limiter object when rate limiter is implemented
 class marketDataHandler:
-    def __init__(self, rate_limiter, db_handler):
-        self.api_call_count = 0
-        self.rate_limiter = rate_limiter
+    def __init__(self, db_handler):
+        #self.api_call_count = 0
         self.db_handler = db_handler
 
 
@@ -190,28 +190,3 @@ class marketDataHandler:
             json.dump(market_data, file, ensure_ascii=False, indent=4)
 
         print(f"Data saved for {symbol} at {file_path}")
-
-
-    '''
-    def plot_candle(self, symbol, time_frame):
-        
-        end_time = "2024-11-01T20:00:00Z"
-        safe_end_time = end_time.replace(":", "-")
-        loaded_data = self.load_data_from_file(symbol, time_frame, safe_end_time)
-
-        if "error" not in loaded_data:
-            aapl_data = loaded_data['bars']['AAPL']
-
-            # Convert to DataFrame for mplfinance
-            df = pd.DataFrame(aapl_data)
-            df['t'] = pd.to_datetime(df['t'], utc=True)  # Convert 't' to datetime format
-            df.set_index('t', inplace=True)  # Set the datetime column as the index
-            df.rename(columns={'o': 'Open', 'h': 'High', 'l': 'Low', 'c': 'Close', 'v': 'Volume'}, inplace=True)
-            df.index = df.index.tz_convert('America/New_York')
-
-            # Plot candlestick chart
-            mpf.plot(df, type='candle', style='charles', title=f'{symbol} Candlestick Chart (ET)', volume=True)
-        else:
-            print(loaded_data["error"])
-        return
-    '''
