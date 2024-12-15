@@ -20,14 +20,11 @@ secretkey = config['secret_key']
 #needs to recieve a rate limiter object when rate limiter is implemented
 class marketDataHandler:
     def __init__(self, db_handler):
-        #self.api_call_count = 0
         self.db_handler = db_handler
 
 
     def fetch_market_data(self, symbol, time_frame, start_time, end_time, limit, feed, currency):
-        """Fetch market data from the Alpaca API."""
-        if self.rate_limiter:
-            self.rate_limiter.add_call()
+        #Fetch market data from the Alpaca API.
 
         url = "https://data.alpaca.markets/v2/stocks/bars"
         params = {
@@ -46,11 +43,11 @@ class marketDataHandler:
             "APCA-API-KEY-ID": apikey,
             "APCA-API-SECRET-KEY": secretkey
         }
-        response = response.get(url, params=params, headers=headers) 
+        response = requests.get(url, params=params, headers=headers) 
 
-        if response.status == 200:
+        if response.status_code == 200:
             data = response.json()
-            self.api_call_count += 1
+            #self.api_call_count += 1
             if "bars" in data and symbol in data["bars"]:
                 return data["bars"][symbol]
             else:
@@ -61,8 +58,8 @@ class marketDataHandler:
     
     def build_historical_data(self, symbol, time_frame, db_table):
         # get most recent and oldest timestamp from db table
-        self.cursor.exectute(f"SELECT MIN(time), MAX(time) FROM {db_table} WHERE symbol = '{symbol}'")
-        oldest_date, newest_date = self.cursor.fetchone()
+        query = f"SELECT MIN(time), MAX(time) FROM {db_table} WHERE symbol = '{symbol}'"
+        oldest_date, newest_date = self.db_handler.fetch_data(query)[0]
 
         # if oldest_date is None, set it to the 1st of January 2018 in the format 'YYYY-MM-DDTHH:00:00Z'
         if oldest_date is None:
@@ -88,10 +85,11 @@ class marketDataHandler:
             self.db_handler.insert_market_data(symbol, fetched_market_data, db_table)
 
             # get the most recent timestamp in the database
-            self.cursor.execute(f"SELECT MAX(time) FROM {db_table} WHERE symbol = '{symbol}'")
-            db_newest_date = self.cursor.fetchone()[0]
+            query = f"SELECT MAX(time) FROM {db_table} WHERE symbol = '{symbol}'"
+            db_newest_date = self.db_handler.fetch_data(query)[0]
 
             # ensure timestamp is timezone aware
+            # THIS RETURNED A TUPLE AND NOT A DATETIME OBJECT - FIX
             if db_newest_date is not None:
                 db_newest_date = db_newest_date.replace(tzinfo=pytz.utc)
             

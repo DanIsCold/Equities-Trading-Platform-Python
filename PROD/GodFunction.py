@@ -56,18 +56,13 @@ list = [
 class godFunction():
     def __init__(self) -> None:
         self.rate_limiter = APIRateLimiter(max_calls_per_minute=200)
-        self.conn = psycopg2.connect(**db_config)
-        self.cursor = self.conn.cursor()
-        self.dbHandler = databaseHandler(self.conn, self.cursor)
+        self.dbHandler = databaseHandler()
+        self.dbHandler.connect()
         self.watchlist = self.dbHandler.get_watchlist()
     
 
-    def market_data_test(self):
-        mdHandler = marketDataHandler(self.dbHandler)
-
-
     def md_handler_test(self):
-        mdHandler = marketDataHandler()
+        mdHandler = marketDataHandler(self.dbHandler)
         mdHandler.build_historical_data('AAPL', '1H', 'hourly_market_data')
     
 
