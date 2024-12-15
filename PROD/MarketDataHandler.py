@@ -13,14 +13,14 @@ config_path = os.path.join(working_directory, "config.json")
 
 with open(config_path) as f:
     config = json.load(f)
-apikey = config['api_key']
-secretkey = config['secret_key']
 
 
 #needs to recieve a rate limiter object when rate limiter is implemented
 class marketDataHandler:
     def __init__(self, db_handler):
         self.db_handler = db_handler
+        self.apikey = config['api_key']
+        self.secretkey = config['secret_key']
 
 
     def fetch_market_data(self, symbol, time_frame, start_time, end_time, limit, feed, currency):
@@ -40,8 +40,8 @@ class marketDataHandler:
         }
         headers = {
             "accept": "application/json",
-            "APCA-API-KEY-ID": apikey,
-            "APCA-API-SECRET-KEY": secretkey
+            "APCA-API-KEY-ID": self.apikey,
+            "APCA-API-SECRET-KEY": self.secretkey
         }
         response = requests.get(url, params=params, headers=headers) 
 
@@ -86,10 +86,9 @@ class marketDataHandler:
 
             # get the most recent timestamp in the database
             query = f"SELECT MAX(time) FROM {db_table} WHERE symbol = '{symbol}'"
-            db_newest_date = self.db_handler.fetch_data(query)[0]
+            db_newest_date = self.db_handler.fetch_data(query)[0][0]
 
             # ensure timestamp is timezone aware
-            # THIS RETURNED A TUPLE AND NOT A DATETIME OBJECT - FIX
             if db_newest_date is not None:
                 db_newest_date = db_newest_date.replace(tzinfo=pytz.utc)
             
@@ -126,8 +125,8 @@ class marketDataHandler:
         }
         headers = {
             "accept": "application/json",
-            "APCA-API-KEY-ID": apikey,
-            "APCA-API-SECRET-KEY": secretkey
+            "APCA-API-KEY-ID": self.apikey,
+            "APCA-API-SECRET-KEY": self.secretkey
         }
         async with session.get(url, params=params, headers=headers) as response:
             if response.status == 200:
