@@ -1,7 +1,6 @@
 import os
 import json
 import websocket
-import threading
 import time
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -11,7 +10,7 @@ config_path = os.path.join(working_directory, "config.json")
 with open(config_path) as f:
     config = json.load(f)
 
-class LiveDataHandler:
+class liveDataHandler:
     def __init__(self, db_handler):
         self.db_handler = db_handler
         self.apikey = config['api_key']
@@ -37,6 +36,82 @@ class LiveDataHandler:
 
         
         def on_open(self, ws):
-            print('Websocket connection opened.')
+            print('Starting websocket connection...')
+
+            auth_message = {
+                "action": "auth",
+                "key": self.apikey,
+                "secret": self.secretkey
+            }
+            ws.send(json.dumps(auth_message))
+            print("Authenticating...")
+
+            subscribe_message = {
+                "action": "subscribe",
+                "bars": ["AAPL"]
+            }
+            ws.send(json.dumps(subscribe_message))
+            print("Susbscription request sent:", subscribe_message)
+
+        
+        def start(self):
             self.is_running = True
+            while self.is_running:
+                try:
+                    self.ws = websocket.WebSocketApp(
+                        self.base_url,
+                        on_open=self.on_open,
+                        on_message=self.on_message,
+                        on_error=self.on_error,
+                        on_close=self.on_close
+                    )
+                    self.ws.run_forever()
+                except Exception as e:
+                    print("Error in WebSocket connection: ", e)
+                    print("Reconnecting in 5 seconds...")
+                    time.sleep(5)
+        
+
+        def stop(self):
+            self.is_running = False
+            if self.ws:
+                self.ws.close()
+            print("Websocket connection closed.")
+
+
+        def on_test_open(self, ws):
+            print('Starting websocket connection...')
+
+            auth_message = {
+                "action": "auth",
+                "key": self.apikey,
+                "secret": self.secretkey
+            }
+            ws.send(json.dumps(auth_message))
+            print("Authenticating...")
+
+            subscribe_message = {
+                "action": "subscribe",
+                "bars": ["FAKEPACA"]
+            }
+            ws.send(json.dumps(subscribe_message))
+            print("Susbscription request sent:", subscribe_message)
+
+        
+        def test_start(self):
+            self.is_running = True
+            while self.is_running:
+                try:
+                    self.ws = websocket.WebSocketApp(
+                        self.testurl,
+                        on_open=self.on_test_open,
+                        on_message=self.on_message,
+                        on_error=self.on_error,
+                        on_close=self.on_close
+                    )
+                    self.ws.run_forever()
+                except Exception as e:
+                    print("Error in WebSocket connection: ", e)
+                    print("Reconnecting in 5 seconds...")
+                    time.sleep(5)
             

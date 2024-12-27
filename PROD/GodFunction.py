@@ -4,10 +4,11 @@ import psycopg2
 from psycopg2.extras import execute_values
 from MarketDataHandler import marketDataHandler
 from DatabaseHandler import databaseHandler
+from LiveDataHandler import liveDataHandler
 from APIRateLimiter import APIRateLimiter
 import aiohttp
 import asyncio
-import os, json
+import os, json, threading
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 working_directory = os.path.abspath(os.path.join(current_dir, os.pardir))
@@ -66,6 +67,15 @@ class godFunction():
         mdHandler.build_historical_data('AAPL', '1H', 'hourly_market_data')
     
 
+    def ld_handler_test(self):
+        ldHandler = liveDataHandler(self.dbHandler)
+        try:
+            threading.Thread(target=ldHandler.test_start).start()
+            print('Press Ctrl+C to stop the websocket connection.')
+        except KeyboardInterrupt:
+            ldHandler.stop()
+
+
     async def md_threaded_calls_async(self):
         """Make asynchronous API calls for multiple symbols."""
         mdHandler = marketDataHandler('2017-11-13T00:00:00Z', '2024-11-13T21:00:00Z', 10000, 'iex', 'USD', self.rate_limiter)
@@ -74,7 +84,13 @@ class godFunction():
             await asyncio.gather(*tasks)
 
 
-#For reference, our DB tables are as follows: second_market_data, minute_market_data, hourly_market_data, watchlist
+'''
+For reference, our DB tables are as follows: 
+ - minute_market_data (includes live + 3 months history),
+ - hourly_market_data(full history),
+ - watchlist
+'''
 shum = godFunction()
-godFunction.md_handler_test(shum)
+#godFunction.md_handler_test(shum) #Function to test fetching and storing historical data
+godFunction.ld_handler_test(shum) #Function to test websocket connection
 #asyncio.run(shum.md_threaded_calls_async())
