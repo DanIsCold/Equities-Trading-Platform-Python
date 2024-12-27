@@ -21,97 +21,97 @@ class liveDataHandler:
         self.is_running = False
     
 
-        def on_message(self, ws, message):
-            data = json.loads(message)
-            print(data)
-            #self.db_handler.insert_market_data(data['symbol'], data, 'minute_market_data')
-        
+    def on_message(self, ws, message):
+        data = json.loads(message)
+        print(data)
+        #self.db_handler.insert_market_data(data['symbol'], data, 'minute_market_data')
+    
 
-        def on_error(self, ws, error):
-            print(error)
-        
+    def on_error(self, ws, error):
+        print(error)
+    
 
-        def on_close(self, ws, close_status_code, close_msg):
-            print('Websocket connection closed. Code: ', close_status_code, 'Message: ', close_msg)
+    def on_close(self, ws, close_status_code, close_msg):
+        print('Websocket connection closed. Code: ', close_status_code, 'Message: ', close_msg)
 
-        
-        def on_open(self, ws):
-            print('Starting websocket connection...')
+    
+    def on_open(self, ws):
+        print('Starting websocket connection...')
 
-            auth_message = {
-                "action": "auth",
-                "key": self.apikey,
-                "secret": self.secretkey
-            }
-            ws.send(json.dumps(auth_message))
-            print("Authenticating...")
+        auth_message = {
+            "action": "auth",
+            "key": self.apikey,
+            "secret": self.secretkey
+        }
+        ws.send(json.dumps(auth_message))
+        print("Authenticating...")
 
-            subscribe_message = {
-                "action": "subscribe",
-                "bars": ["AAPL"]
-            }
-            ws.send(json.dumps(subscribe_message))
-            print("Susbscription request sent:", subscribe_message)
+        subscribe_message = {
+            "action": "subscribe",
+            "bars": ["AAPL"]
+        }
+        ws.send(json.dumps(subscribe_message))
+        print("Susbscription request sent:", subscribe_message)
 
-        
-        def start(self):
-            self.is_running = True
-            while self.is_running:
-                try:
-                    self.ws = websocket.WebSocketApp(
-                        self.base_url,
-                        on_open=self.on_open,
-                        on_message=self.on_message,
-                        on_error=self.on_error,
-                        on_close=self.on_close
-                    )
-                    self.ws.run_forever()
-                except Exception as e:
-                    print("Error in WebSocket connection: ", e)
-                    print("Reconnecting in 5 seconds...")
-                    time.sleep(5)
-        
+    
+    def start(self):
+        self.is_running = True
+        while self.is_running:
+            try:
+                self.ws = websocket.WebSocketApp(
+                    self.base_url,
+                    on_open=self.on_open,
+                    on_message=self.on_message,
+                    on_error=self.on_error,
+                    on_close=self.on_close
+                )
+                self.ws.run_forever()
+            except Exception as e:
+                print("Error in WebSocket connection: ", e)
+                print("Reconnecting in 5 seconds...")
+                time.sleep(5)
+    
 
-        def stop(self):
-            self.is_running = False
-            if self.ws:
-                self.ws.close()
-            print("Websocket connection closed.")
+    def stop(self):
+        self.is_running = False
+        if self.ws:
+            self.ws.close()
+        print("Websocket connection closed.")
 
 
-        def on_test_open(self, ws):
-            print('Starting websocket connection...')
+    def on_test_open(self, ws):
+        print('Starting websocket connection...')
 
-            auth_message = {
-                "action": "auth",
-                "key": self.apikey,
-                "secret": self.secretkey
-            }
-            ws.send(json.dumps(auth_message))
-            print("Authenticating...")
+        auth_message = {
+            "action": "auth",
+            "key": self.apikey,
+            "secret": self.secretkey
+        }
+        ws.send(json.dumps(auth_message))
+        print("Authenticating...")
 
-            subscribe_message = {
-                "action": "subscribe",
-                "bars": ["FAKEPACA"]
-            }
-            ws.send(json.dumps(subscribe_message))
-            print("Susbscription request sent:", subscribe_message)
+        subscribe_message = {
+            "action": "subscribe",
+            "bars": ["FAKEPACA"]
+        }
+        ws.send(json.dumps(subscribe_message))
+        print("Susbscription request sent:", subscribe_message)
 
-        
-        def test_start(self):
-            self.is_running = True
-            while self.is_running:
-                try:
-                    self.ws = websocket.WebSocketApp(
-                        self.testurl,
-                        on_open=self.on_test_open,
-                        on_message=self.on_message,
-                        on_error=self.on_error,
-                        on_close=self.on_close
-                    )
-                    self.ws.run_forever()
-                except Exception as e:
-                    print("Error in WebSocket connection: ", e)
-                    print("Reconnecting in 5 seconds...")
-                    time.sleep(5)
+    
+    def test_start(self):
+        self.is_running = True
+        while self.is_running:
+            try:
+                self.ws = websocket.WebSocketApp(
+                    self.testurl,
+                    on_open=self.on_test_open,
+                    on_message=self.on_message,
+                    on_error=self.on_error,
+                    on_close=self.on_close
+                )
+                self.ws.run_forever()
+            except Exception as e:
+                print("Error in WebSocket connection: ", e)
+                print("Reconnecting in 5 seconds...")
+                time.sleep(5)
             
