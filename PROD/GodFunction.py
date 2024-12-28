@@ -91,6 +91,7 @@ For reference, our DB tables are as follows:
  - watchlist
 '''
 shum = godFunction()
-#godFunction.md_handler_test(shum) #Function to test fetching and storing historical data
-godFunction.ld_handler_test(shum) #Function to test websocket connection
+godFunction.md_handler_test(shum) #Function to test fetching and storing historical data
+#godFunction.ld_handler_test(shum) #Function to test websocket connection
 #asyncio.run(shum.md_threaded_calls_async())
+#Error in WebSocket connection:  module 'websocket' has no attribute 'WebSocketApp'

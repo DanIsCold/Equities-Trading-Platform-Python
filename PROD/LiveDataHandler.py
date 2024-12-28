@@ -1,7 +1,8 @@
 import os
 import json
-import websocket
+from websocket import WebSocketApp
 import time
+import threading
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 working_directory = os.path.abspath(os.path.join(current_dir, os.pardir))
@@ -19,13 +20,16 @@ class liveDataHandler:
         self.testurl = "wss://stream.data.alpaca.markets/v2/test"
         self.ws = None
         self.is_running = False
+        self.stop_event = threading.Event()
     
 
     def on_message(self, ws, message):
         data = json.loads(message)
-        print(data)
-        #self.db_handler.insert_market_data(data['symbol'], data, 'minute_market_data')
-    
+        if isinstance(data, list) and all('T' in entry and entry['T'] == 'b' for entry in data):
+            self.db_handler.insert_ws_data(data, 'minute_market_data')
+        else:
+            print("Non bar message received: ", data)
+        
 
     def on_error(self, ws, error):
         print(error)
@@ -58,7 +62,7 @@ class liveDataHandler:
         self.is_running = True
         while self.is_running:
             try:
-                self.ws = websocket.WebSocketApp(
+                self.ws = WebSocketApp(
                     self.base_url,
                     on_open=self.on_open,
                     on_message=self.on_message,
@@ -102,7 +106,7 @@ class liveDataHandler:
         self.is_running = True
         while self.is_running:
             try:
-                self.ws = websocket.WebSocketApp(
+                self.ws = WebSocketApp(
                     self.testurl,
                     on_open=self.on_test_open,
                     on_message=self.on_message,

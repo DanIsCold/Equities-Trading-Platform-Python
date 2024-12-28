@@ -88,6 +88,40 @@ class databaseHandler:
 
         except Exception as e:
             print("An error occurred:", e)
+
+    
+    def insert_ws_data(self, data_list, table):
+        try:
+            if not isinstance(data_list, list):
+                raise ValueError("Expected market data to be a list of dictionaries")
+
+            insert_query = f"""
+            INSERT INTO {table} (
+                symbol, close_price, high_price, low_price, trade_count, open_price, time, volume, volume_weighted
+            ) VALUES %s
+            """
+
+            values = [
+                (
+                data['S'],
+                data['c'],
+                data['h'],
+                data['l'],
+                data['n'],
+                data['o'],
+                data['t'],
+                data['v'],
+                data['vw']
+            )
+            for data in data_list
+            ]
+
+            execute_values(self.cursor, insert_query, values)
+            self.conn.commit()
+            print(f"Inserted {len(data_list)} records to the database.")
+        
+        except Exception as e:
+            print("An error occurred:", e)
     
 
     def get_watchlist(self):
