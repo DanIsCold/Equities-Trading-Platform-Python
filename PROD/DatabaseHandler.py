@@ -58,8 +58,6 @@ class databaseHandler:
     # inserts the fetched market data to given table
     def insert_market_data(self, symbol, market_data, table):
         try:
-            print("Inserting to the database...")
-
             # Insert query using execute_values for efficient bulk insertion
             insert_query = f"""
             INSERT INTO {table} (
@@ -84,10 +82,13 @@ class databaseHandler:
             # Use execute_values to perform batch insertion
             execute_values(self.cursor, insert_query, values)
             self.conn.commit()
-            print("Data inserted successfully.")
 
         except Exception as e:
             print("An error occurred:", e)
+            print("Dumping data to error_data.json for debugging...")
+            # write data to a file for debugging
+            with open("error_data.json", "w") as f:
+                json.dump(market_data, f, indent=4)
 
     
     def insert_ws_data(self, data_list, table):

@@ -4,8 +4,9 @@ import requests
 import pytz
 from datetime import datetime, timedelta, timezone
 from APIRateLimiter import APIRateLimiter
+from RateLimiter import rateLimiter
 import os
-import asyncio
+from dateutil.relativedelta import relativedelta
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 working_directory = os.path.abspath(os.path.join(current_dir, os.pardir))
@@ -19,6 +20,7 @@ with open(config_path) as f:
 class marketDataHandler:
     def __init__(self, db_handler):
         self.db_handler = db_handler
+        self.rate_limiter = rateLimiter(200, 60)
         self.apikey = config['api_key']
         self.secretkey = config['secret_key']
 
@@ -61,7 +63,7 @@ class marketDataHandler:
         query = f"SELECT MIN(time), MAX(time) FROM {db_table} WHERE symbol = '{symbol}'"
         oldest_date, newest_date = self.db_handler.fetch_data(query)[0]
 
-        # if oldest_date is None, set it to the 1st of January 2018 in the format 'YYYY-MM-DDTHH:00:00Z'
+        # if database has no data for symbol, set oldest_date to the 1st of January 2018 in the format 'YYYY-MM-DDTHH:00:00Z'
         if oldest_date is None:
             print("No data in the database, fetching data from the beginning...")
             oldest_date = datetime(2018, 1, 1, 0, 0, 0, tzinfo=pytz.utc)
@@ -77,6 +79,8 @@ class marketDataHandler:
             # Format datetimes to strings for the API request
             oldest_date_str = oldest_date.strftime('%Y-%m-%dT%H:%M:%SZ')
             closest_trading_timestamp_str = closest_trading_timestamp.strftime('%Y-%m-%dT%H:%M:%SZ')
+
+            self.rate_limiter.acquire() # rate limit the API calls
 
             # fetch market data from the API
             fetched_market_data = self.fetch_market_data(symbol, time_frame, oldest_date_str, closest_trading_timestamp_str, 10000, 'iex', 'USD')
@@ -100,11 +104,88 @@ class marketDataHandler:
             # newest_date updated for next iteration
             newest_date = db_newest_date
 
-            # add 30 minutes to the oldest date
-            oldest_date = newest_date + timedelta(minutes=30)
+            # add an hour to the newest_date for the next iteration
+            oldest_date = newest_date + timedelta(hours=1)
         
         print(f"{time_frame} data for {symbol} fetched and stored in the database")
 
+    
+    def backfill_historical_data(self, symbol, time_frame):
+        if time_frame == '1Min':
+            db_table = 'minute_market_data'
+        elif time_frame == '1H':
+            db_table = 'hourly_market_data'
+        else:
+            print("Invalid time frame")
+            return
+
+        try:
+            query = f"SELECT MIN(time), MAX(time) FROM {db_table} WHERE symbol = '{symbol}'"
+            oldest_date, newest_date = self.db_handler.fetch_data(query)[0]
+
+            # if database has no data for symbol, set oldest_date dependng on the time frame
+            if oldest_date is None:
+                if time_frame == '1Min':
+                    three_months_ago = datetime.now(timezone.utc) - relativedelta(months=3)
+                    oldest_date = three_months_ago
+                    newest_date = three_months_ago
+                else:
+                    oldest_date = datetime(2018, 1, 1, 0, 0, 0, tzinfo=pytz.utc)
+                    newest_date = datetime(2018, 1, 1, 0, 0, 0, tzinfo=pytz.utc)
+            
+            # get the closest trading timestamp to the current time in UTC
+            closest_trading_timestamp = self.closest_trading_timestamp()
+
+            print(f"Fetching data for {symbol} from {newest_date} onwards")
+            count = 0
+
+            # while the most recent date in the database is less than the closest trading timestamp
+            while newest_date < closest_trading_timestamp:
+                # Format datetimes to strings for the API request
+                oldest_date_str = oldest_date.strftime('%Y-%m-%dT%H:%M:%SZ')
+                closest_trading_timestamp_str = closest_trading_timestamp.strftime('%Y-%m-%dT%H:%M:%SZ')
+
+                self.rate_limiter.acquire() # rate limit the API calls
+                count += 1
+
+                # fetch market data from the API
+                fetched_market_data = self.fetch_market_data(symbol, time_frame, oldest_date_str, closest_trading_timestamp_str, 10000, 'iex', 'USD')
+
+                # check if returned market data is an error
+                if "error" in fetched_market_data:
+                    print(f"Error fetching data: {fetched_market_data['error']}")
+                    break
+
+                # insert the fetched market data to the database
+                self.db_handler.insert_market_data(symbol, fetched_market_data, db_table)
+
+                # get the most recent timestamp in the database
+                query = f"SELECT MAX(time) FROM {db_table} WHERE symbol = '{symbol}'"
+                db_newest_date = self.db_handler.fetch_data(query)[0][0]
+
+                # ensure timestamp is timezone aware
+                if db_newest_date is not None:
+                    db_newest_date = db_newest_date.replace(tzinfo=pytz.utc)
+                
+                # if db_newest_date is the same as newest_date, break the loop
+                if db_newest_date == newest_date:
+                    print(f"No new data fetched for {symbol}")
+                    break
+                
+                # newest_date updated for next iteration
+                newest_date = db_newest_date
+
+                # add varying time for next iteration depending on the time frame
+                if time_frame == '1Min':
+                    oldest_date = newest_date + timedelta(minutes=1)
+                else:
+                    oldest_date = newest_date + timedelta(hours=1)
+            
+            print(f"{symbol} - {time_frame} data backfilled in {count} API calls")
+
+        except Exception as e:
+            print(f"Error backfilling data: {e}")
+            raise
             
     async def aysnc_fetch_market_data(self, symbol, time_frame, session):
         """Fetch market data from the Alpaca API."""

@@ -9,6 +9,7 @@ from APIRateLimiter import APIRateLimiter
 import aiohttp
 import asyncio
 import os, json, threading
+from RateLimiter import rateLimiter
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 working_directory = os.path.abspath(os.path.join(current_dir, os.pardir))
@@ -56,7 +57,6 @@ list = [
 
 class godFunction():
     def __init__(self) -> None:
-        self.rate_limiter = APIRateLimiter(max_calls_per_minute=200)
         self.dbHandler = databaseHandler()
         self.dbHandler.connect()
         self.watchlist = self.dbHandler.get_watchlist()
@@ -64,7 +64,7 @@ class godFunction():
 
     def md_handler_test(self):
         mdHandler = marketDataHandler(self.dbHandler)
-        mdHandler.build_historical_data('AAPL', '1H', 'hourly_market_data')
+        mdHandler.backfill_historical_data('AAPL', '1Min')
     
 
     def ld_handler_test(self):
@@ -80,15 +80,15 @@ class godFunction():
         """Make asynchronous API calls for multiple symbols."""
         mdHandler = marketDataHandler('2017-11-13T00:00:00Z', '2024-11-13T21:00:00Z', 10000, 'iex', 'USD', self.rate_limiter)
         async with aiohttp.ClientSession() as session:
-            tasks = [mdHandler.thread_save(symbol, '1H',session) for symbol in list]
+            tasks = [mdHandler.thread_save(symbol, '1H', session) for symbol in list]
             await asyncio.gather(*tasks)
 
 
 '''
 For reference, our DB tables are as follows: 
- - minute_market_data (includes live + 3 months history),
- - hourly_market_data(full history),
- - watchlist
+ - minute_market_data (includes live + 3 months history at 1M intervals),
+ - hourly_market_data (full history at 1H intervals),
+ - watchlist (list of symbols to track + further info)
 '''
 shum = godFunction()
 godFunction.md_handler_test(shum) #Function to test fetching and storing historical data
