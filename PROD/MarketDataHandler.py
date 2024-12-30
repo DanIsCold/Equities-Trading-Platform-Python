@@ -58,58 +58,6 @@ class marketDataHandler:
             return {"error": f"Failed data fetch, code: {response.status}"}
         
     
-    def build_historical_data(self, symbol, time_frame, db_table):
-        # get most recent and oldest timestamp from db table
-        query = f"SELECT MIN(time), MAX(time) FROM {db_table} WHERE symbol = '{symbol}'"
-        oldest_date, newest_date = self.db_handler.fetch_data(query)[0]
-
-        # if database has no data for symbol, set oldest_date to the 1st of January 2018 in the format 'YYYY-MM-DDTHH:00:00Z'
-        if oldest_date is None:
-            print("No data in the database, fetching data from the beginning...")
-            oldest_date = datetime(2018, 1, 1, 0, 0, 0, tzinfo=pytz.utc)
-            newest_date = datetime(2018, 1, 1, 0, 0, 0, tzinfo=pytz.utc)
-
-        # get the closest trading timestamp to the current time in UTC
-        closest_trading_timestamp = self.closest_trading_timestamp()
-
-        print(f"Fetching data for {symbol} from {newest_date} onwards") 
-
-        # while the most recent date in the database is less than the closest trading timestamp
-        while newest_date < closest_trading_timestamp:
-            # Format datetimes to strings for the API request
-            oldest_date_str = oldest_date.strftime('%Y-%m-%dT%H:%M:%SZ')
-            closest_trading_timestamp_str = closest_trading_timestamp.strftime('%Y-%m-%dT%H:%M:%SZ')
-
-            self.rate_limiter.acquire() # rate limit the API calls
-
-            # fetch market data from the API
-            fetched_market_data = self.fetch_market_data(symbol, time_frame, oldest_date_str, closest_trading_timestamp_str, 10000, 'iex', 'USD')
-
-            # insert the fetched market data to the database
-            self.db_handler.insert_market_data(symbol, fetched_market_data, db_table)
-
-            # get the most recent timestamp in the database
-            query = f"SELECT MAX(time) FROM {db_table} WHERE symbol = '{symbol}'"
-            db_newest_date = self.db_handler.fetch_data(query)[0][0]
-
-            # ensure timestamp is timezone aware
-            if db_newest_date is not None:
-                db_newest_date = db_newest_date.replace(tzinfo=pytz.utc)
-            
-            # if db_newest_date is the same as newest_date, break the loop
-            if db_newest_date == newest_date:
-                print(f"No new data fetched for {symbol}")
-                break
-            
-            # newest_date updated for next iteration
-            newest_date = db_newest_date
-
-            # add an hour to the newest_date for the next iteration
-            oldest_date = newest_date + timedelta(hours=1)
-        
-        print(f"{time_frame} data for {symbol} fetched and stored in the database")
-
-    
     def backfill_historical_data(self, symbol, time_frame):
         if time_frame == '1Min':
             db_table = 'minute_market_data'
@@ -155,9 +103,8 @@ class marketDataHandler:
                 if "error" in fetched_market_data:
                     print(f"Error fetching data: {fetched_market_data['error']}")
                     break
-
-                # insert the fetched market data to the database
-                self.db_handler.insert_market_data(symbol, fetched_market_data, db_table)
+                else:
+                    self.db_handler.insert_market_data(symbol, fetched_market_data, db_table)
 
                 # get the most recent timestamp in the database
                 query = f"SELECT MAX(time) FROM {db_table} WHERE symbol = '{symbol}'"
@@ -187,6 +134,7 @@ class marketDataHandler:
             print(f"Error backfilling data: {e}")
             raise
             
+
     async def aysnc_fetch_market_data(self, symbol, time_frame, session):
         """Fetch market data from the Alpaca API."""
         if self.rate_limiter:
@@ -250,12 +198,10 @@ class marketDataHandler:
         return closest_timestamp
     
 
-    def write_market_data_to_file(self, symbol, time_frame):
-        safe_end_time = self.end_time.replace(":", "_")
-        #call fetch market data and write it to a file within the same directory
-        market_data = self.fetch_market_data(symbol, time_frame)
-        with io.open(f"{symbol}_{time_frame}_{safe_end_time}.json", 'w', encoding='utf-8') as file:
-            json.dump(market_data, file, ensure_ascii=False, indent=4)
+    def track_market_data(self, watchlist, time_frame):
+        for symbol in watchlist:
+            self.backfill_historical_data(symbol, time_frame)
+            
 
     async def thread_save(self, symbol, time_frame, session):
         market_data = await self.aysnc_fetch_market_data(symbol, time_frame, session)
